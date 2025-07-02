@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Přehled</h2>
+<table id="stats-table">
+<tr><th>Počet zařízení:</th><td id="stat-devices">Načítám...</td></tr>
+<tr><th>Přijaté pakety:</th><td id="stat-packets">Načítám...</td></tr>
+<tr><th>Poslední zpráva:</th><td id="stat-last">Načítám...</td></tr>
+</table>
+{% endblock %}
+
+{% block js %}
+
+<script>
+function updateStats() {
+    fetch('/auth/stats')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('stat-devices').textContent = data.devices;
+            document.getElementById('stat-packets').textContent = data.packets;
+            document.getElementById('stat-last').textContent = data.last_message;
+        })
+        .catch(err => console.error("Chyba při načítání dat", err));
+}
+
+// Spustit hned a pak každých 5 sekund
+updateStats();
+setInterval(updateStats, 5000);
+</script>
+{% endblock %}

@@ -1,0 +1,36 @@
+{
+"detail_uzivatele":{"cz":"Správa uživatele","eng":"User details"},    
+"data_zarizeni":{}
+"heslo":{"cz":"Heslo","eng":"Password"},    
+"jmeno":{"cz":"Jméno","eng":"Name"},
+"login":{"cz":"Login", "eng":"Login"},
+"nastenka":{"cz":"Nástěnka","eng":"Dashboard"},
+"neplatne_heslo":{"cz":"'Neplatné heslo.'","eng":"Wrong password"},
+"nove_heslo":{"cz":"Nové heslo","eng":"New password"},    
+"nove_zarizeni": {"cz":"Nové zařízení", "eng":"New device"},
+"novy_uzivatel": {"cz":"Nový uživatel", "eng":"New user"},
+"odebrat": {"cz":"Odebrat", "eng":"Remove"},
+"odhlasit": {"cz":"Odhlásit", "eng":"Logout"},
+"oznaceni":{"cz":"Oznanačení", "eng":"Identification"},
+"poloha":{"cz":"Poloha", "eng":"location"},
+"popis": {"cz":"Popis", "eng":"Description"},
+"pridej":{"cz":"Přidej", "eng":"Insert"},
+"prihlasit":{"cz":"Přihlásit", "eng":"Sign in"},
+"prijmeni":{"cz":"Příjmení", "eng":"Surname"},
+"role_uzivatele":{"cz":"Role uživatele", "eng":"User role"},
+"sprava": {"cz":"Správa", "eng":"Manage"},
+"seznam_uzivatelu": {"cz":"Seznam uživateků", "eng":"List of users"},
+"seznam_zarizeni": {"cz":"Seznam zařízení", "eng":"List of devices"},
+"sprava_zarizeni": {"cz":"Správa zařízení", "eng":"Device management"},
+"sprava_uzivatelu": {"cz":"Správa uživatelů", "eng":"User management"},
+"uzivatel_nenalezen": {"cz":"Uživatel nenalezen.", "eng":"User not found"},
+"vlozeno":{"cz":"Vloženo","eng":"Inserted"},
+"vlozit": {"cz":"Vložit","eng":"Insert"},
+"zmen": {"cz":"Změnit","eng":"Update"},
+"zobrazit data":{"cz":"Zobrazit data", "eng":"Data view"},
+
+
+"flash_role_pridana": {"cz":"Role byla úspěšně přidána.","eng":"Role was added."},
+"flash_role_duplicita": {"cz":"Uživatel již má tuto roli přiřazenou.","eng":"User has this role."}
+
+}

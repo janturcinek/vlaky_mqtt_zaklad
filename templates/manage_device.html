@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block content %}
+
+        <h2>{{ labels["sprava_zarizeni"] }}</h2>
+        <h3>{{ labels["nove_zarizeni"] }}</h3>
+            <form method="post" class="p-3 border rounded bg-light log_form">
+                <div ><label for="oznaceni" >{{ labels["oznaceni"] }}:</label>
+                <input type="text" name="oznaceni" id="oznaceni" class="form-control" value={{ data["oznaceni"] }}  required>
+            </div>
+            <div >
+                <label for="poloha" >{{ labels["poloha"] }}:</label>
+                <input type="text" name="poloha" id="poloha" class="form-control" value={{ data["poloha"] }} required>
+            </div>
+            <div >
+                <label for="popis" >{{ labels["popis"] }}:</label>
+                <textarea name="popis" id="popis" class="form-control" rows="3">{{ data["popis"] }}</textarea>
+            </div>
+            <div >
+                <input type="submit" name="uprav_zarizeni" class="btn btn-primary" value="{{ labels['zmen'] }}">
+            </div>
+            </form>
+
+
+{% endblock %}
+

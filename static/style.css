@@ -1,0 +1,67 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+* {font-family: "Nunito", sans-serif;
+   font-optical-sizing: auto;
+   font-weight: <weight>;
+   font-style: normal;    
+}
+:root{
+    --form_back:#d4e6cb;
+    --border_color:#002214;
+    --warn-back:#bba5a5;
+    --warn-border:#7c0202;
+
+    
+}
+body { margin: 0; display: flex; height: 100vh; font-family: sans-serif; 
+font-size: clamp(12px, 1.0vw, 18px);
+}
+.sidebar { width: 250px; background: #333; color: white; padding: 20px; }
+.content { flex: 1; padding: 20px; }
+form { margin: auto; width: 300px; padding: 20px; border: 1px solid #ccc; }
+nav ul li {display:block;}
+nav ul li a {display:block;border:1px solid white;color:white; border-radius: 5px; margin-bottom: 10px; padding:5px; text-decoration: none;}
+
+.compact-table {
+    width: auto;
+}
+
+
+/*panely*/
+.panel {display:block;padding:10px;border-radius:5px;border: 1px solid var(--border_color) }
+
+/*Přihlašovací formulář*/
+.log_form{
+    background:var(--form_back);width:35em;
+    margin-bottom: 1em;position:relative;
+    margin-left: 15px;
+}
+.log_form div{ display:flex;width:90%;margin:auto;margin-top:1em;}
+.log_form div * {font-size:1.1em;display:block;position:relative;}
+.log_form div label {width:30%;padding:3px;text-align: right;}
+.log_form div input,.log_form div textarea {width:70%;padding:3px;text-align: left;}
+.log_form div input[type="submit"] {width:100%;padding:3px;text-align: center;}
+
+.invalid-feedback {position:absolute;top:0;left:10;display:none}
+
+
+.inline-form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.inline-form input[type="submit"],
+.inline-form button[type="submit"] {
+    border: none;
+    
+}
+
+
+/*flash boxy*/
+ul.flash {display:block;width:50em;margin:auto;padding:0;margin-top:2em}
+ul.flash li {display:block; background:var(--warn-back);border:1px solid var(--warn-border);padding:0.5em;border-radius: 5px;}
+
+
+

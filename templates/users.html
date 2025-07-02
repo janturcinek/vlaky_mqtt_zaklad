@@ -1,0 +1,139 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h2>{{ labels["sprava_uzivatelu"] }}</h2>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+
+<h3>{{ labels["novy_uzivatel"] }}</h3>
+
+<form method="post" class="p-3 border rounded bg-light log_form">
+    <div class="mb-3">
+        <label class="form-label">{{ labels["jmeno"] }}:</label>
+        <input type="text" name="jmeno" class="form-control" placeholder="{{ labels['jmeno'] }}" required />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">{{ labels["prijmeni"] }}:</label>
+        <input type="text" name="prijmeni" class="form-control" placeholder="{{ labels['prijmeni'] }}" required />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">{{ labels["login"] }}:</label>
+        <input type="text" name="login" id="login" class="form-control" placeholder="{{ labels['login'] }}" required />
+       
+    </div>
+     <div id="login-feedback" class="invalid-feedback"></div>
+    <div class="mb-3">
+        <label class="form-label">{{ labels["heslo"] }}:</label>
+        <input type="password" name="heslo" id="heslo" class="form-control" placeholder="{{ labels['heslo'] }}" required />
+        
+    </div>
+    <div id="password-feedback" class="invalid-feedback"></div>
+    <div>
+        <input type="submit" class="btn btn-primary" value="{{ labels['pridej'] }}">
+    </div>
+</form>
+
+
+        <h3>{{ labels["seznam_uzivatelu"] }}</h3>
+        <table class="table table-striped table-bordered align-left compact-table">
+            <thead class="table-dark">
+                <tr><th>{{ labels["jmeno"] }}</th><th>{{ labels["prijmeni"] }}</th><th>{{ labels["login"] }}</th><th>{{ labels["sprava"] }}</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for user in users %}
+            <tr><td>{{ user[1] }}</td><td>{{ user[2] }}</td><td>{{ user[3] }}</td>
+                <td> <a href="/auth/user/{{user[0]}}" class="btn btn-sm btn-success">{{ labels["sprava"] }}</a></td>
+            </tr>    
+            {% endfor %}
+            </tbody>
+        </table>
+
+{% endblock %}
+
+{% block js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector("form");
+    const loginInput = document.querySelector('input[name="login"]');
+    const passwordInput = document.querySelector('input[name="heslo"]');
+    const feedbackLogin = document.getElementById("login-feedback");
+    const feedbackPassword = document.getElementById("password-feedback");
+
+    if (!form || !loginInput || !passwordInput) {
+        return;
+    }
+
+    form.addEventListener("submit", function (e) {
+        e.preventDefault(); // blokuj formulář
+
+        validateAndSubmit();
+    });
+
+    async function validateAndSubmit() {
+        let valid = true;
+
+        feedbackLogin.textContent = "";
+        feedbackPassword.textContent = "";
+        loginInput.classList.remove("is-invalid");
+        passwordInput.classList.remove("is-invalid");
+
+        const login = loginInput.value.trim();
+        const password = passwordInput.value;
+
+        if (login.length < 5) {
+            feedbackLogin.textContent = "Login musí mít alespoň 5 znaků.";
+            loginInput.classList.add("is-invalid");
+            valid = false;
+        } else {
+            try {
+                const res = await fetch("/auth/check-login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ login: login })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.exists) {
+                        feedbackLogin.textContent = "Tento login je již obsazený.";
+                        loginInput.classList.add("is-invalid");
+                        valid = false;
+                    }
+                } else {
+                    feedbackLogin.textContent = "Chyba při ověřování loginu.";
+                    loginInput.classList.add("is-invalid");
+                    valid = false;
+                }
+            } catch (error) {
+                feedbackLogin.textContent = "Spojení se serverem selhalo.";
+                loginInput.classList.add("is-invalid");
+                valid = false;
+            }
+        }
+
+        if (password.length < 8) {
+            feedbackPassword.textContent = "Heslo musí mít alespoň 8 znaků.";
+            passwordInput.classList.add("is-invalid");
+            valid = false;
+        }
+
+        if (valid) {
+            form.submit();
+        }
+    }
+});
+</script>
+{% endblock %}

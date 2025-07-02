@@ -1,0 +1,26 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>{{ title or "Dashboard" }}</title>
+   
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <link rel="stylesheet" href="/static/style.css">
+    
+      {% block js %} {% endblock %}  
+    
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    
+    {% include 'nav_bar.html' %} 
+
+    {% endif %}
+    <main class="content">
+        {% block content %}
+        {% endblock %}
+    </main>
+</body>
+</html>

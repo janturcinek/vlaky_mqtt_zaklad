@@ -1,0 +1,131 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h2>{{ labels["detail_uzivatele"] }}</h2>
+<h3>{{data["name"]}} {{data["surname"]}} ({{data["login"]}})</h3>
+
+<form method="post" class="p-3 border rounded bg-light log_form">
+    <div class="mb-3">
+        <label class="form-label">{{ labels["jmeno"] }}:</label>
+        <input type="text" name="jmeno" class="form-control" value="{{ data['name'] }}" required />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">{{ labels["prijmeni"] }}:</label>
+        <input type="text" name="prijmeni" class="form-control" value="{{ data['surname'] }}" required />
+    </div>
+
+    <div>
+        <input type="submit" name="zmen_uzivatele" class="btn btn-primary" value="{{ labels['zmen'] }}">
+    </div>
+    </form>
+    
+<h3>{{ labels["nove_heslo"] }}</h3>
+<form method="post" class="p-3 border rounded bg-light log_form">
+    <div id="login-feedback" class="invalid-feedback"></div>
+    <div class="mb-3">
+        <label class="form-label">{{ labels["heslo"] }}:</label>
+        <input type="password" name="heslo" id="heslo" class="form-control" placeholder="{{ labels['heslo'] }}" required />
+        
+    </div>
+    <div id="password-feedback" class="invalid-feedback"></div>
+    <div>
+        <input type="submit" name="nove_heslo" class="btn btn-primary" value="{{ labels['pridej'] }}">
+    </div>
+</form>
+
+<hr>
+<h3>{{ labels["role_uzivatele"] }}</h3>
+
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<form method="post" class="p-3 border rounded bg-light log_form">
+    <div class="mb-3">
+        <label class="form-label">{{ labels["role_uzivatele"] }}:</label>
+        <select name=role>
+            {%for role in roles%}
+            <option value="{{role[0]}}">{{role[1]}}
+            {% endfor %}
+        </select>
+     </div>
+     <div>
+        <input type="submit"  name="new_role" class="btn btn-primary" value="{{ labels['pridej'] }}">
+    </div>
+</form>
+
+        <h3>{{ labels["seznam_uzivatelu"] }}</h3>
+        <table class="table table-striped table-bordered align-left compact-table">
+            <thead class="table-dark">
+                <tr><th>{{ labels["role_uzivatele"] }}</th><th>{{ labels["vlozeno"] }}</th><th>{{ labels["odebrat"] }}</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for role in data["roles"] %}
+            <tr>
+                <td>{{ role["role_name"] }}</td>
+                <td>{{ role["assigned"] }}</td>
+                <td>
+                    <form method="post" class="inline-form">
+                        <input type="hidden" name="user_role_id" value="{{ role['user_role_id'] }}">
+                        <input type="submit" name="remove_role" class="btn btn-sm btn-danger" value="{{ labels['odebrat'] }}">
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+{% endblock %}
+
+{% block js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Formulář pro jméno a příjmení
+    const jmenoPrijmeniForm = document.querySelectorAll('.log_form')[0];
+    jmenoPrijmeniForm.addEventListener('submit', function(event) {
+        const jmeno = jmenoPrijmeniForm.querySelector('input[name="jmeno"]').value.trim();
+        const prijmeni = jmenoPrijmeniForm.querySelector('input[name="prijmeni"]').value.trim();
+        let feedbackDiv = jmenoPrijmeniForm.querySelector('#login-feedback');
+        
+        // Vyčisti předchozí zprávy
+        feedbackDiv.textContent = '';
+        feedbackDiv.style.display = 'none';
+
+        if (jmeno === '' || prijmeni === '') {
+            event.preventDefault();
+            feedbackDiv.textContent = "Jméno a příjmení nesmí být prázdné.";
+            feedbackDiv.style.display = 'block';
+        }
+    });
+
+    // Formulář pro heslo
+    const hesloForm = document.querySelectorAll('.log_form')[1];
+    hesloForm.addEventListener('submit', function(event) {
+        const heslo = hesloForm.querySelector('input[name="heslo"]').value;
+        let feedbackDiv = hesloForm.querySelector('#password-feedback');
+
+        // Vyčisti předchozí zprávy
+        feedbackDiv.textContent = '';
+        feedbackDiv.style.display = 'none';
+
+        if (heslo.length < 8) {
+            event.preventDefault();
+            feedbackDiv.textContent = "Heslo musí mít alespoň 8 znaků.";
+            feedbackDiv.style.display = 'block';
+        }
+    });
+});
+</script>
+{% endblock %}
+
+

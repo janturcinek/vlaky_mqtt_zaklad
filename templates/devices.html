@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block content %}
+
+        <h2>{{ labels["sprava_zarizeni"] }}</h2>
+        <h3>{{ labels["nove_zarizeni"] }}</h3>
+            <form method="post" class="p-3 border rounded bg-light log_form">
+                <div ><label for="oznaceni" >{{ labels["oznaceni"] }}:</label>
+                <input type="text" name="oznaceni" id="oznaceni" class="form-control" placeholder="{{ labels['oznaceni'] }}" required>
+            </div>
+            <div >
+                <label for="poloha" >{{ labels["poloha"] }}:</label>
+                <input type="text" name="poloha" id="poloha" class="form-control" placeholder="{{ labels['poloha'] }}" required>
+            </div>
+            <div >
+                <label for="popis" >{{ labels["popis"] }}:</label>
+                <textarea name="popis" id="popis" class="form-control" rows="3"></textarea>
+            </div>
+            <div >
+                <input type="submit" name="pridej_zarizeni" class="btn btn-primary" value="{{ labels['pridej'] }}">
+            </div>
+            </form>
+
+
+
+        <h3>{{ labels["seznam_zarizeni"] }}</h3>
+        <table class="table table-striped table-bordered align-middle">
+            <thead class="table-dark">
+                <tr><th>Označení</th><th>{{ labels["poloha"] }}</th><th>{{ labels["vlozeno"] }}</th>
+                    <th>{{ labels["popis"] }}</th><th>{{ labels["sprava"] }}</th><th>{{ labels["prijata_data"] }}</th></tr>
+            </thead>
+            <tbody>
+            {% for dev in devices %}
+            <tr><td>{{ dev[1] }}</td><td>{{ dev[2] }}</td><td>{{ dev[3] }}</td><td>{{ dev[4] }} {{ dev[5] }}</td>
+                <td> <a href="/auth/devices/manage/{{ dev[0] }}" class="btn btn-sm btn-success">{{ labels["sprava"] }}</a></td>
+                <td> <a href="/auth/devices/data/{{ dev[0] }}" class="btn btn-sm btn-primary">{{ labels["zobrazit data"] }}</a></td></tr>    
+            {% endfor %}
+            </tbody>
+        </table>
+{% endblock %}
+
