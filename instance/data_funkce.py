@@ -1,6 +1,8 @@
 import sqlite3
 from flask import current_app
 from werkzeug.security import generate_password_hash,check_password_hash
+from nastaveni import WAVE_SAMPLE_LEN
+from datetime import datetime
 
 def get_db_connection():
     """Vytvoří připojení k databázi na základě Flask konfigurace"""
@@ -14,6 +16,7 @@ def is_user(login):
     c = conn.cursor()
     c.execute("SELECT user_id, name, surname FROM users WHERE login = ?", (login,))
     user_row = c.fetchone()
+    conn.close()
     return user_row
         
 
@@ -72,7 +75,7 @@ def seznam_uzivatelu():
     c = conn.cursor()
     c.execute("SELECT user_id,name,surname,login FROM users order by user_id desc")
     uziv=c.fetchall()
-    conn.close
+    conn.close()
     return uziv
 
 
@@ -81,7 +84,7 @@ def seznam_roli():
     c = conn.cursor()
     c.execute("SELECT role_id,name FROM system_roles order by role_id")
     roles=c.fetchall()
-    conn.close
+    conn.close()
     return roles
 
 def pocet_adminu():
@@ -174,6 +177,7 @@ def ma_roli(user_id,sysid):
             WHERE ur.user_id = ? AND r.sysid=? and ur.removed IS NULL
         """, (user_id,sysid))
         ano = c.fetchone()
+        conn.close()
         if not ano:
             return False
         else:
@@ -222,17 +226,20 @@ def dej_detail_uzivatele(id):
 def save_packet_to_db(device_id, topic, timestamp, packet_nr, total_packets):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute('''
-        INSERT INTO mqtt_packets (client_id, topic, timestamp, packet_nr, total_packets)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (
-        device_id,
-        topic,
-        timestamp,
-        packet_nr,
-        total_packets
-    ))
-    conn.commit()
+    try:
+        c.execute('''
+            INSERT INTO mqtt_packets (client_id, topic, timestamp, packet_nr, total_packets)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            device_id,
+            topic,
+            timestamp,
+            packet_nr,
+            total_packets
+        ))
+        conn.commit()
+    except Exception as e:
+        print("nepodařilo se uložit z následujícího důvodu: ",e)
     conn.close()
     
 def celkem_paketu():
@@ -249,7 +256,7 @@ def dej_seznam_zarizeni():
     c.execute("""SELECT device_id,client_id, location,assigned, name,surname 
                 FROM devices join users using(user_id) order by assigned desc""")
     devices=c.fetchall()
-    conn.close
+    conn.close()
     return devices
 
 def dej_zarizeni(id):
@@ -320,7 +327,7 @@ def posledni_zprava():
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("""
-              SELECT client_id, number_of_packets, messages.assigned from 
+              SELECT client_id, packets, messages.assigned from 
               messages join devices using(device_id) where
               message_id = (SELECT max(message_id) FROM messages)""")
     result = c.fetchone()
@@ -330,9 +337,51 @@ def posledni_zprava():
 def uloz_zpravu(device_id, topic, total_packets, filename):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute(
-        "INSERT INTO messages (device_id, topic, packets, filename) VALUES (?, ?, ?, ?)",
-        (device_id, topic, total_packets, filename)
-    )
-    conn.commit()
+    try:
+        c.execute(
+            "INSERT INTO messages (device_id, topic, packets, filename) VALUES (?, ?, ?, ?)",
+            (device_id, topic, total_packets, filename)
+        )
+        conn.commit()
+    except Exception as e:
+         print("nepodařilo se uložit z následujícího důvodu: ",e)
     conn.close()
+    
+def dej_seznam_zprav(id):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+              SELECT messages.assigned, packets, filename from 
+              messages join devices on messages.device_id=devices.device_id 
+              where messages.device_id = ? """, (int(id),))
+    
+    result = c.fetchall()
+    print(result)
+    conn.close()
+    return result
+    
+    
+    
+    
+def print_packet_content (incomming_packet):
+    print("packet header: %x" % incomming_packet.packet_header)
+    print("packet version: %04x" % incomming_packet.packet_version)
+    print("actual packet NR: %d" % incomming_packet.actual_packet_nr)
+    print("total packet to recieve: %d" % incomming_packet.total_packet_nr)
+    print("total samples measured: %d" % incomming_packet.total_sample_count)
+    print("packet timestamp unix: %d" % incomming_packet.timestamp)
+    
+    readable_time = datetime.fromtimestamp(incomming_packet.timestamp)
+    
+    print("packet timestamp HRF: %s" % (readable_time.strftime('%Y-%m-%d %H:%M:%S')))
+    print("signals series length %d" % WAVE_SAMPLE_LEN)
+    print("train count uint16 value: %d" % incomming_packet.train_counter)
+    print("CRC value: %04x" % incomming_packet.CRC)
+    print("")
+    print("--signal data content--")
+    print("chanel 0 voltages:  %s" % ', '.join(map(str, incomming_packet.chan_0_vlt)))
+    print("chanel 0 integral:  %s" % ', '.join(map(str, incomming_packet.chan_0_int)))
+    print("chanel 1 voltages:  %s" % ', '.join(map(str, incomming_packet.chan_1_vlt)))
+    print("chanel 1 integral:  %s" % ', '.join(map(str, incomming_packet.chan_1_int)))
+
+        

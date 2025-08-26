@@ -1,6 +1,7 @@
 {
 "detail_uzivatele":{"cz":"Správa uživatele","eng":"User details"},    
-"data_zarizeni":{}
+"data_zarizeni":{"cz":"Přijatá data", "eng":"Recived data"},
+"doruceno":{"cz":"Doručeno", "eng":"Recived time"},
 "heslo":{"cz":"Heslo","eng":"Password"},    
 "jmeno":{"cz":"Jméno","eng":"Name"},
 "login":{"cz":"Login", "eng":"Login"},
@@ -12,6 +13,7 @@
 "odebrat": {"cz":"Odebrat", "eng":"Remove"},
 "odhlasit": {"cz":"Odhlásit", "eng":"Logout"},
 "oznaceni":{"cz":"Oznanačení", "eng":"Identification"},
+"pocet_paketu":{"cz":"Počet paketů", "eng":"Number of packets"},    
 "poloha":{"cz":"Poloha", "eng":"location"},
 "popis": {"cz":"Popis", "eng":"Description"},
 "pridej":{"cz":"Přidej", "eng":"Insert"},
@@ -21,6 +23,7 @@
 "sprava": {"cz":"Správa", "eng":"Manage"},
 "seznam_uzivatelu": {"cz":"Seznam uživateků", "eng":"List of users"},
 "seznam_zarizeni": {"cz":"Seznam zařízení", "eng":"List of devices"},
+"seznam_zprav": {"cz":"Seznam zpráv", "eng":"List of messages"},
 "sprava_zarizeni": {"cz":"Správa zařízení", "eng":"Device management"},
 "sprava_uzivatelu": {"cz":"Správa uživatelů", "eng":"User management"},
 "uzivatel_nenalezen": {"cz":"Uživatel nenalezen.", "eng":"User not found"},
