@@ -105,9 +105,9 @@ def on_message(client, userdata, msg):
         # cleanup
         updated_workaround_timestamp=1
         print ("enable future timestamp workaroud update")
-        sleep(0.5)
-        print ("ende")
-        sleep(0.5)
+        #sleep(0.5)
+        #print ("ende")
+        #sleep(0.5)
         del packet_buffers[key]
 
 
