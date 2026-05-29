@@ -3,24 +3,95 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>{{ title or "Dashboard" }}</title>
+    <title>{{ title or "Průjezdy vlaků" }}</title>
    
-    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
-    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', path='bootstrap.min.css') }}">
+    <script src="{{ url_for('static', path='bootstrap.min.js') }}"></script>
     <link rel="stylesheet" href="/static/style.css">
     
       {% block js %} {% endblock %}  
     
 </head>
 <body>
-    {% if current_user.is_authenticated %}
-    
-    {% include 'nav_bar.html' %} 
+{% if current_user %}
+    {# ── Top bar ── #}
+    <div class="topbar">
+        <span class="topbar-brand">Průjezdy vlaků</span>
+        <div class="topbar-user">
+            <span class="topbar-name">{{ current_user.name }} {{ current_user.surname }}</span>
+            <button class="topbar-btn" onclick="document.getElementById('change-pw-overlay').style.display='flex'">Změnit heslo</button>
+            <a class="topbar-btn topbar-logout" href="/auth/logout">Odhlásit</a>
+        </div>
+    </div>
+    {# ── App body start ── #}
+    <div class="app-body">
+        {% include 'nav_bar.html' %}
+        <main class="content">
+            {% if flashed_messages %}
+            <div class="flash-list">
+                {% for category, message in flashed_messages %}
+                <div class="flash-item {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+{% else %}
+    <main class="login-page">
+        {% if flashed_messages %}
+        <div class="flash-list">
+            {% for category, message in flashed_messages %}
+            <div class="flash-item {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+{% endif %}
 
-    {% endif %}
-    <main class="content">
-        {% block content %}
-        {% endblock %}
+{% block content %}{% endblock %}
+
+{% if current_user %}
+        </main>
+    </div>
+
+    {# ── Modal: změna hesla ── #}
+    <div id="change-pw-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:10px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.3);overflow:hidden;">
+            <div style="background:#111;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-weight:600;font-size:.95rem;">Změnit heslo</span>
+                <button onclick="document.getElementById('change-pw-overlay').style.display='none'" style="background:none;border:none;color:#999;font-size:1.2rem;cursor:pointer;line-height:1;">✕</button>
+            </div>
+            <form method="post" action="/auth/change-password" style="padding:20px;display:flex;flex-direction:column;gap:12px;" onsubmit="return pwCheck(this)">
+                <div>
+                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px;">Stávající heslo</label>
+                    <input type="password" name="stare_heslo" required class="form-control" placeholder="••••••••">
+                </div>
+                <div>
+                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px;">Nové heslo</label>
+                    <input type="password" name="heslo" id="pw-new" required class="form-control" placeholder="••••••••">
+                </div>
+                <div>
+                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px;">Potvrzení nového hesla</label>
+                    <input type="password" name="heslo2" id="pw-confirm" required class="form-control" placeholder="••••••••">
+                </div>
+                <div id="pw-err" style="display:none;color:#dc2626;font-size:.82rem;"></div>
+                <button type="submit" class="btn btn-primary" style="margin-top:4px;">Uložit heslo</button>
+            </form>
+        </div>
+    </div>
+    <script>
+    function pwCheck(form) {
+        const n = document.getElementById('pw-new').value;
+        const c = document.getElementById('pw-confirm').value;
+        const err = document.getElementById('pw-err');
+        if (n !== c) {
+            err.textContent = 'Hesla se neshodují.';
+            err.style.display = 'block';
+            return false;
+        }
+        err.style.display = 'none';
+        return true;
+    }
+    </script>
+{% else %}
     </main>
+{% endif %}
 </body>
 </html>

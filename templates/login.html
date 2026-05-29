@@ -1,33 +1,37 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<form method="post" class="log_form panel">
-    <h2>Přihlášení</h2>
+<div class="login-page">
+    <div class="login-card">
 
+        <div class="login-card-header">
+            <h2>Přihlášení</h2>
+            <span class="app-label">Vlaky &mdash; MQTT monitor</span>
+        </div>
 
+        <div class="login-card-body">
+            <form method="post">
+                <div class="field">
+                    <label>{{ labels["login"] }}</label>
+                    <input type="text" name="username" placeholder="Váš login" required autofocus />
+                </div>
+                <div class="field">
+                    <label>{{ labels["heslo"] }}</label>
+                    <input type="password" name="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required />
+                </div>
+                <input type="submit" name="prihlasit" value="{{ labels['prihlasit'] }}">
+            </form>
 
-    <div>
-        <label>{{labels["login"] }}:</label>
-        <input type="text" name="username" placeholder="Login" required />
+            {% if flashed_messages %}
+                <div class="flash-list" style="margin-top:20px">
+                    {% for category, message in flashed_messages %}
+                        <div class="flash-item {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
     </div>
-    <div>
-        <label>{{labels["heslo"] }}:</label>
-        <input type="password" name="password" placeholder="Heslo" required />
-    </div>
-    <div>
-        <input type="submit" name="prihlasit" value="{{labels["prihlasit"] }}">
-    </div>
-</form>
-
-    <!-- Flash zprávy -->
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <ul class="flash">
-                {% for message in messages %}
-                    <li>{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
+</div>
 
 {% endblock %}

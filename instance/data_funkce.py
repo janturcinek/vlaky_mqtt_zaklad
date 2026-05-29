@@ -1,14 +1,12 @@
 import sqlite3
-from flask import current_app
 from werkzeug.security import generate_password_hash,check_password_hash
-from nastaveni import WAVE_SAMPLE_LEN
+from nastaveni import WAVE_SAMPLE_LEN, DevelopmentConfig
 from datetime import datetime
 
 def get_db_connection():
-    """Vytvoří připojení k databázi na základě Flask konfigurace"""
-    db_path = current_app.config['DATABASE']
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row  # volitelné: usnadní práci s výsledky
+    """Vytvoří připojení k databázi"""
+    conn = sqlite3.connect(DevelopmentConfig.DATABASE)
+    conn.row_factory = sqlite3.Row
     return conn
 
 def is_user(login):
@@ -259,6 +257,28 @@ def dej_seznam_zarizeni():
     conn.close()
     return devices
 
+
+def dej_seznam_zarizeni_pro_uzivatele(user_id: int, is_admin: bool):
+    """Vrátí seznam zařízení filtrovaný dle přístupových práv."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    if is_admin:
+        c.execute("""SELECT device_id, client_id, location, assigned, name, surname
+                     FROM devices JOIN users USING(user_id)
+                     ORDER BY assigned DESC""")
+    else:
+        c.execute("""SELECT device_id, client_id, location, assigned, name, surname
+                     FROM devices JOIN users USING(user_id)
+                     WHERE device_id IN (
+                         SELECT device_id FROM devices WHERE user_id = ?
+                         UNION
+                         SELECT device_id FROM device_access WHERE user_id = ?
+                     )
+                     ORDER BY assigned DESC""", (user_id, user_id))
+    devices = c.fetchall()
+    conn.close()
+    return devices
+
 def dej_zarizeni(id):
     conn = get_db_connection()
     try:
@@ -337,28 +357,474 @@ def posledni_zprava():
 def uloz_zpravu(device_id, topic, total_packets, filename):
     conn = get_db_connection()
     c = conn.cursor()
+    message_id = None
     try:
         c.execute(
             "INSERT INTO messages (device_id, topic, packets, filename) VALUES (?, ?, ?, ?)",
             (device_id, topic, total_packets, filename)
         )
         conn.commit()
+        message_id = c.lastrowid
     except Exception as e:
          print("nepodařilo se uložit z následujícího důvodu: ",e)
     conn.close()
+    return message_id
+
+
+def uloz_klasifikaci(message_id: int, result: dict):
+    """Uloží výsledek automatické klasifikace vlaku do záznamu zprávy."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute("""
+            UPDATE messages
+            SET train_type = ?, speed_kmh = ?, damage_detected = ?,
+                classified_at = datetime('now','localtime')
+            WHERE message_id = ?
+        """, (
+            result.get("typ_vlaku"),
+            result.get("rychlost_kmh"),
+            1 if result.get("poskozeni_podvozku") else 0,
+            int(message_id)
+        ))
+        conn.commit()
+    except Exception as e:
+        print(f"Chyba při ukládání klasifikace: {e}")
+    conn.close()
     
+def dej_pocet_zprav_zarizeni(device_id: int) -> int:
+    """Vrátí počet přijatých zpráv (vlaků) pro dané zařízení."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM messages WHERE device_id = ?", (int(device_id),))
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
+def dej_prehled_zarizeni():
+    """Vrátí seznam všech zařízení s aktuálními podmínkami a statistikami vlaků."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        SELECT
+            d.device_id,
+            d.client_id,
+            d.location,
+            d.description,
+            (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id) AS total_trains,
+            (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id
+               AND m.assigned >= datetime('now', '-7 days')) AS trains_week,
+            (SELECT m.assigned FROM messages m WHERE m.device_id = d.device_id
+               ORDER BY m.message_id DESC LIMIT 1) AS last_train_time,
+            (SELECT dc.temperature FROM device_conditions dc WHERE dc.device_id = d.device_id
+               ORDER BY dc.condition_id DESC LIMIT 1) AS temperature,
+            (SELECT dc.humidity FROM device_conditions dc WHERE dc.device_id = d.device_id
+               ORDER BY dc.condition_id DESC LIMIT 1) AS humidity,
+            (SELECT dc.batt_mv FROM device_conditions dc WHERE dc.device_id = d.device_id
+               ORDER BY dc.condition_id DESC LIMIT 1) AS batt_mv,
+            (SELECT dc.signal_strength FROM device_conditions dc WHERE dc.device_id = d.device_id
+               ORDER BY dc.condition_id DESC LIMIT 1) AS signal_strength,
+            (SELECT dc.received_at FROM device_conditions dc WHERE dc.device_id = d.device_id
+               ORDER BY dc.condition_id DESC LIMIT 1) AS conditions_at
+        FROM devices d
+        ORDER BY d.assigned DESC
+    """)
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Správa přístupů k zařízením ─────────────────────────────────────────────
+
+def ensure_device_access_table():
+    """Vytvoří tabulku device_access, pokud neexistuje."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS device_access (
+            access_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id  INTEGER NOT NULL,
+            user_id    INTEGER NOT NULL,
+            can_edit   INTEGER NOT NULL DEFAULT 0,
+            assigned   TEXT DEFAULT (datetime('now','localtime')),
+            UNIQUE(device_id, user_id),
+            FOREIGN KEY (device_id) REFERENCES devices(device_id),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+# ── Databáze typů lokomotiv / vlaků ─────────────────────────────────────────
+
+_TRAIN_DB_SEED = [
+    {"typ": "CZLoko1",            "pomer": 1.791667, "dvojkoli_mm": 2400, "popis": ""},
+    {"typ": "CZLoko2",            "pomer": 2.75,     "dvojkoli_mm": 2400, "popis": ""},
+    {"typ": "Škoda 380",          "pomer": 2.48,     "dvojkoli_mm": 2500, "popis": ""},
+    {"typ": "ALSTOM TRAXX 160",   "pomer": 2.988462, "dvojkoli_mm": 2600, "popis": ""},
+    {"typ": "ALSTOM TRAXX 160B",  "pomer": 2.996154, "dvojkoli_mm": 2600, "popis": ""},
+    {"typ": "ALSTOM TRAXX 140",   "pomer": 3.015385, "dvojkoli_mm": 2600, "popis": ""},
+    {"typ": "SIEMENS Vectron Dual","pomer": 3.0,     "dvojkoli_mm": 2700, "popis": ""},
+    {"typ": "SIEMENS Vectron CD", "pomer": 2.166667, "dvojkoli_mm": 3000, "popis": ""},
+    {"typ": "SIEMENS Vectron",    "pomer": 2.3,      "dvojkoli_mm": 3000, "popis": ""},
+    {"typ": "Škoda 363",          "pomer": 1.59375,  "dvojkoli_mm": 3200, "popis": ""},
+    {"typ": "Pendolino",          "pomer": 6.037037, "dvojkoli_mm": 2700, "popis": "Jednotka ETR 470"},
+    {"typ": "LEO Express",        "pomer": 4.925926, "dvojkoli_mm": 2700, "popis": ""},
+    {"typ": "Panter",             "pomer": 6.916667, "dvojkoli_mm": 2400, "popis": ""},
+    {"typ": "Elefant",            "pomer": 6.3,      "dvojkoli_mm": 2600, "popis": ""},
+    {"typ": "Newag Dragon 2",     "pomer": 1.00,     "dvojkoli_mm": 1950, "popis": ""},
+]
+
+
+def ensure_train_types_table():
+    """Vytvoří tabulku train_types a naplní ji výchozími hodnotami."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS train_types (
+            train_type_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+            typ            TEXT NOT NULL UNIQUE,
+            pomer          REAL NOT NULL,
+            dvojkoli_mm    INTEGER NOT NULL,
+            popis          TEXT DEFAULT '',
+            created        TEXT DEFAULT (datetime('now','localtime'))
+        )
+    """)
+    conn.commit()
+    # Osívování výchozími hodnotami (přeskočí existující)
+    for t in _TRAIN_DB_SEED:
+        c.execute("""
+            INSERT OR IGNORE INTO train_types (typ, pomer, dvojkoli_mm, popis)
+            VALUES (?, ?, ?, ?)
+        """, (t["typ"], t["pomer"], t["dvojkoli_mm"], t["popis"]))
+    conn.commit()
+    conn.close()
+
+
+def dej_seznam_typu_vlaku():
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT train_type_id, typ, pomer, dvojkoli_mm, popis, created FROM train_types ORDER BY typ")
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def dej_typ_vlaku(train_type_id: int):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT train_type_id, typ, pomer, dvojkoli_mm, popis FROM train_types WHERE train_type_id = ?",
+              (int(train_type_id),))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def pridej_typ_vlaku(typ: str, pomer: float, dvojkoli_mm: int, popis: str = ""):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("INSERT INTO train_types (typ, pomer, dvojkoli_mm, popis) VALUES (?, ?, ?, ?)",
+              (typ.strip(), float(pomer), int(dvojkoli_mm), popis.strip()))
+    conn.commit()
+    conn.close()
+
+
+def uprav_typ_vlaku(train_type_id: int, typ: str, pomer: float, dvojkoli_mm: int, popis: str = ""):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        UPDATE train_types SET typ=?, pomer=?, dvojkoli_mm=?, popis=?
+        WHERE train_type_id=?
+    """, (typ.strip(), float(pomer), int(dvojkoli_mm), popis.strip(), int(train_type_id)))
+    conn.commit()
+    conn.close()
+
+
+def smaz_typ_vlaku(train_type_id: int):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM train_types WHERE train_type_id = ?", (int(train_type_id),))
+    conn.commit()
+    conn.close()
+
+
+def dej_train_db_pro_klasifikaci():
+    """Vrátí seznam diktů ve formátu kompatibilním s TRAIN_DB pro classifier.py."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT typ, pomer, dvojkoli_mm FROM train_types ORDER BY typ")
+    rows = c.fetchall()
+    conn.close()
+    return [{"typ": r[0], "pomer": r[1], "dvojkoli_mm": r[2]} for r in rows]
+
+
+def pridej_pristup_zarizeni(device_id: int, user_id: int, can_edit: int = 0):
+    """Přidá nebo aktualizuje přístup uživatele k zařízení."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO device_access (device_id, user_id, can_edit)
+        VALUES (?, ?, ?)
+        ON CONFLICT(device_id, user_id) DO UPDATE SET can_edit = excluded.can_edit
+    """, (int(device_id), int(user_id), int(can_edit)))
+    conn.commit()
+    conn.close()
+
+
+def odeber_pristup_zarizeni(device_id: int, user_id: int):
+    """Odebere přístup uživatele k zařízení."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM device_access WHERE device_id = ? AND user_id = ?",
+              (int(device_id), int(user_id)))
+    conn.commit()
+    conn.close()
+
+
+def dej_pristupy_zarizeni(device_id: int):
+    """Vrátí seznam uživatelů s přístupem k zařízení (kromě vlastníka)."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        SELECT da.access_id, da.user_id, u.name, u.surname, u.login, da.can_edit, da.assigned
+        FROM device_access da
+        JOIN users u ON da.user_id = u.user_id
+        WHERE da.device_id = ?
+        ORDER BY da.assigned
+    """, (int(device_id),))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def ma_pristup_k_zarizeni(device_id: int, user_id: int, is_admin: bool) -> bool:
+    """Vrátí True, pokud má uživatel právo vidět zařízení."""
+    if is_admin:
+        return True
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        SELECT 1 FROM devices WHERE device_id = ? AND user_id = ?
+        UNION
+        SELECT 1 FROM device_access WHERE device_id = ? AND user_id = ?
+    """, (int(device_id), int(user_id), int(device_id), int(user_id)))
+    result = c.fetchone()
+    conn.close()
+    return result is not None
+
+
+def muze_editovat_zarizeni(device_id: int, user_id: int, is_admin: bool) -> bool:
+    """Vrátí True, pokud má uživatel právo editovat zařízení."""
+    if is_admin:
+        return True
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        SELECT 1 FROM devices WHERE device_id = ? AND user_id = ?
+        UNION
+        SELECT 1 FROM device_access WHERE device_id = ? AND user_id = ? AND can_edit = 1
+    """, (int(device_id), int(user_id), int(device_id), int(user_id)))
+    result = c.fetchone()
+    conn.close()
+    return result is not None
+
+
+_PREHLED_SELECT = """
+    SELECT
+        d.device_id, d.client_id, d.location, d.description,
+        (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id) AS total_trains,
+        (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id
+           AND m.assigned >= datetime('now', '-7 days')) AS trains_week,
+        (SELECT m.assigned FROM messages m WHERE m.device_id = d.device_id
+           ORDER BY m.message_id DESC LIMIT 1) AS last_train_time,
+        (SELECT dc.temperature FROM device_conditions dc WHERE dc.device_id = d.device_id
+           ORDER BY dc.condition_id DESC LIMIT 1) AS temperature,
+        (SELECT dc.humidity FROM device_conditions dc WHERE dc.device_id = d.device_id
+           ORDER BY dc.condition_id DESC LIMIT 1) AS humidity,
+        (SELECT dc.batt_mv FROM device_conditions dc WHERE dc.device_id = d.device_id
+           ORDER BY dc.condition_id DESC LIMIT 1) AS batt_mv,
+        (SELECT dc.signal_strength FROM device_conditions dc WHERE dc.device_id = d.device_id
+           ORDER BY dc.condition_id DESC LIMIT 1) AS signal_strength,
+        (SELECT dc.received_at FROM device_conditions dc WHERE dc.device_id = d.device_id
+           ORDER BY dc.condition_id DESC LIMIT 1) AS conditions_at
+    FROM devices d
+"""
+
+
+def dej_prehled_pro_uzivatele(user_id: int, is_admin: bool):
+    """Jako dej_prehled_zarizeni, ale filtruje dle přístupových práv."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    if is_admin:
+        c.execute(_PREHLED_SELECT + " ORDER BY d.assigned DESC")
+    else:
+        c.execute(
+            _PREHLED_SELECT +
+            " WHERE d.device_id IN ("
+            "   SELECT device_id FROM devices WHERE user_id = ?"
+            "   UNION"
+            "   SELECT device_id FROM device_access WHERE user_id = ?"
+            " ) ORDER BY d.assigned DESC",
+            (int(user_id), int(user_id))
+        )
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def dej_seznam_zprav(id):
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("""
-              SELECT messages.assigned, packets, filename from 
-              messages join devices on messages.device_id=devices.device_id 
-              where messages.device_id = ? """, (int(id),))
-    
-    result = c.fetchall()
-    print(result)
+              SELECT message_id, messages.assigned, packets, filename,
+                     train_type, speed_kmh, damage_detected
+              FROM messages
+              JOIN devices ON messages.device_id = devices.device_id
+              WHERE messages.device_id = ?
+              ORDER BY messages.assigned DESC""", (int(id),))
+    rows = c.fetchall()
     conn.close()
-    return result
+    return [
+        {
+            "message_id": r[0],
+            "assigned": r[1],
+            "packets": r[2],
+            "filename": r[3],
+            "train_type": r[4],
+            "speed_kmh": r[5],
+            "damage_detected": r[6],
+        }
+        for r in rows
+    ]
+
+
+def dej_zprava_filename(message_id):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT filename FROM messages WHERE message_id = ?", (int(message_id),))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def uloz_klasifikaci(message_id, train_type, speed_kmh, damage_detected):
+    from datetime import datetime
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        UPDATE messages
+        SET train_type = ?, speed_kmh = ?, damage_detected = ?, classified_at = ?
+        WHERE message_id = ?
+    """, (
+        train_type,
+        speed_kmh,
+        1 if damage_detected else 0,
+        datetime.now().isoformat(),
+        int(message_id),
+    ))
+    conn.commit()
+    conn.close()
+
+
+def ensure_classification_columns():
+    """Přidá klasifikační sloupce do tabulky messages, pokud ještě neexistují."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("PRAGMA table_info(messages)")
+    existing = {row[1] for row in c.fetchall()}
+    new_columns = {
+        "train_type": "TEXT",
+        "speed_kmh": "REAL",
+        "damage_detected": "INTEGER",
+        "classified_at": "TEXT",
+    }
+    for col, col_type in new_columns.items():
+        if col not in existing:
+            c.execute(f"ALTER TABLE messages ADD COLUMN {col} {col_type}")
+    conn.commit()
+    conn.close()
+
+
+def ensure_conditions_table():
+    """Vytvoří tabulku device_conditions, pokud neexistuje."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS device_conditions (
+            condition_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id      INTEGER NOT NULL,
+            received_at    TEXT NOT NULL,
+            temperature    REAL,
+            humidity       REAL,
+            pressure       REAL,
+            batt_mv        INTEGER,
+            signal_strength INTEGER,
+            uptime_minutes  INTEGER,
+            train_counter   INTEGER,
+            FOREIGN KEY (device_id) REFERENCES devices(device_id)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+def uloz_podmínky(p: dict):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO device_conditions
+            (device_id, received_at, temperature, humidity, pressure,
+             batt_mv, signal_strength, uptime_minutes, train_counter)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        p["device_id"],
+        datetime.now().isoformat(timespec="seconds"),
+        p["temperature"],
+        p["humidity"],
+        p["pressure"],
+        p["batt_mv"],
+        p["signal_strength"],
+        p["uptime_minutes"],
+        p["train_counter"],
+    ))
+    conn.commit()
+    conn.close()
+
+
+def dej_posledni_podmínky(device_id: int):
+    """Vrátí poslední zaznamenanou telemetrii pro zařízení."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        SELECT received_at, temperature, humidity, pressure,
+               batt_mv, signal_strength, uptime_minutes, train_counter
+        FROM device_conditions
+        WHERE device_id = ?
+        ORDER BY condition_id DESC LIMIT 1
+    """, (int(device_id),))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return dict(row)
+
+
+def dej_historii_podmínek(device_id: int, limit: int = 50):
+    """Vrátí historii telemetrie pro zařízení (nejnovější první)."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        SELECT received_at, temperature, humidity, pressure,
+               batt_mv, signal_strength, uptime_minutes, train_counter
+        FROM device_conditions
+        WHERE device_id = ?
+        ORDER BY condition_id DESC LIMIT ?
+    """, (int(device_id), limit))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
     
     
     

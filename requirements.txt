@@ -1,0 +1,18 @@
+# Web framework
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Templating & sessions
+jinja2
+itsdangerous
+
+# Password hashing
+werkzeug
+
+# MQTT
+paho-mqtt
+
+# Data processing
+numpy
+scipy

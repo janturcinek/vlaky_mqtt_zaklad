@@ -1,25 +1,108 @@
 {% extends "layout.html" %}
 {% block content %}
 
-        <h2>{{ labels["sprava_zarizeni"] }}</h2>
-        <h3>{{ labels["nove_zarizeni"] }}</h3>
-            <form method="post" class="p-3 border rounded bg-light log_form">
-                <div ><label for="oznaceni" >{{ labels["oznaceni"] }}:</label>
-                <input type="text" name="oznaceni" id="oznaceni" class="form-control" value={{ data["oznaceni"] }}  required>
-            </div>
-            <div >
-                <label for="poloha" >{{ labels["poloha"] }}:</label>
-                <input type="text" name="poloha" id="poloha" class="form-control" value={{ data["poloha"] }} required>
-            </div>
-            <div >
-                <label for="popis" >{{ labels["popis"] }}:</label>
-                <textarea name="popis" id="popis" class="form-control" rows="3">{{ data["popis"] }}</textarea>
-            </div>
-            <div >
-                <input type="submit" name="uprav_zarizeni" class="btn btn-primary" value="{{ labels['zmen'] }}">
-            </div>
-            </form>
+<div class="page-header">
+    <h1>{{ labels["sprava_zarizeni"] }}</h1>
+    <p class="page-subtitle">Úprava registrovaného zařízení.</p>
+</div>
 
+<form method="post" class="log_form">
+    <div>
+        <label for="oznaceni">MQTT Client ID (identifikátor):</label>
+        <input type="text" name="oznaceni" id="oznaceni" value="{{ data['oznaceni'] }}" required>
+    </div>
+    <div>
+        <label></label>
+        <small style="color:var(--gray-mid);font-size:.82em;">Prostřední část topicu: <code>NRF/<strong id="topic-preview-val">{{ data['oznaceni'] or '…' }}</strong>/UP_STREAM</code></small>
+    </div>
+    <div>
+        <label for="poloha">{{ labels["poloha"] }} (umístění):</label>
+        <input type="text" name="poloha" id="poloha" value="{{ data['poloha'] }}" required>
+    </div>
+    <div>
+        <label for="popis">{{ labels["popis"] }}:</label>
+        <textarea name="popis" id="popis" rows="3">{{ data["popis"] }}</textarea>
+    </div>
+    <div>
+        <label></label>
+        <input type="submit" name="uprav_zarizeni" class="btn btn-primary" value="{{ labels['zmen'] }}">
+    </div>
+</form>
+
+{# ── Správa přístupů ── #}
+<div class="log_form" style="margin-top:32px;">
+    <h2 style="font-size:1.05rem;font-weight:700;margin-bottom:16px;">Přístup k zařízení</h2>
+
+    {# -- stávající přístupy -- #}
+    {% if pristupy %}
+    <table style="width:100%;border-collapse:collapse;margin-bottom:18px;">
+        <thead>
+            <tr>
+                <th style="background:var(--black);color:var(--white);padding:8px 12px;font-size:.82rem;text-align:left;">Uživatel</th>
+                <th style="background:var(--black);color:var(--white);padding:8px 12px;font-size:.82rem;text-align:center;">Může editovat</th>
+                <th style="background:var(--black);color:var(--white);padding:8px 12px;font-size:.82rem;text-align:left;">Přidáno</th>
+                <th style="background:var(--black);color:var(--white);padding:8px 12px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in pristupy %}
+        <tr style="border-bottom:1px solid var(--gray-light);">
+            <td style="padding:8px 12px;">
+                <strong>{{ p.name }} {{ p.surname }}</strong>
+                <span style="color:var(--gray-mid);font-size:.82rem;margin-left:6px;">{{ p.login }}</span>
+            </td>
+            <td style="padding:8px 12px;text-align:center;">
+                {% if p.can_edit %}<span class="badge-ok">✓ ano</span>{% else %}<span style="color:var(--gray-mid);">ne</span>{% endif %}
+            </td>
+            <td style="padding:8px 12px;font-size:.82rem;color:var(--gray-mid);">{{ p.assigned }}</td>
+            <td style="padding:8px 12px;">
+                <form method="post" style="display:inline;">
+                    <input type="hidden" name="odeber_user_id" value="{{ p.user_id }}">
+                    <button type="submit" name="odeber_pristup" value="1"
+                            style="background:none;border:1px solid var(--gray-light);border-radius:5px;padding:3px 10px;cursor:pointer;font-size:.8rem;color:var(--gray-dark);"
+                            onclick="return confirm('Odebrat přístup uživateli {{ p.name }} {{ p.surname }}?')">
+                        Odebrat
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--gray-mid);font-size:.9rem;margin-bottom:16px;">Žádní další uživatelé nemají přístup k tomuto zařízení.</p>
+    {% endif %}
+
+    {# -- přidat přístup -- #}
+    {% if dostupni_uziv %}
+    <form method="post" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <div>
+            <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:4px;">Přidat uživatele</label>
+            <select name="pristup_user_id" required
+                    style="padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;min-width:200px;">
+                {% for u in dostupni_uziv %}
+                <option value="{{ u[0] }}">{{ u[1] }} {{ u[2] }} ({{ u[3] }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding-bottom:4px;">
+            <input type="checkbox" name="pristup_can_edit" id="pristup_can_edit" value="1">
+            <label for="pristup_can_edit" style="font-size:.85rem;">Může editovat</label>
+        </div>
+        <div>
+            <button type="submit" name="pridej_pristup" value="1" class="btn btn-primary">Přidat přístup</button>
+        </div>
+    </form>
+    {% else %}
+    <p style="color:var(--gray-mid);font-size:.85rem;">Všichni uživatelé již mají přístup.</p>
+    {% endif %}
+</div>
+
+<script>
+    const inp = document.getElementById('oznaceni');
+    const prev = document.getElementById('topic-preview-val');
+    inp.addEventListener('input', () => { prev.textContent = inp.value.trim() || '…'; });
+</script>
 
 {% endblock %}
 

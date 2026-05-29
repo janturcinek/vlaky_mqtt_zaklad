@@ -1,67 +1,650 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
 
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
-* {font-family: "Nunito", sans-serif;
-   font-optical-sizing: auto;
-   font-weight: <weight>;
-   font-style: normal;    
-}
-:root{
-    --form_back:#d4e6cb;
-    --border_color:#002214;
-    --warn-back:#bba5a5;
-    --warn-border:#7c0202;
-
-    
-}
-body { margin: 0; display: flex; height: 100vh; font-family: sans-serif; 
-font-size: clamp(12px, 1.0vw, 18px);
-}
-.sidebar { width: 250px; background: #333; color: white; padding: 20px; }
-.content { flex: 1; padding: 20px; }
-form { margin: auto; width: 300px; padding: 20px; border: 1px solid #ccc; }
-nav ul li {display:block;}
-nav ul li a {display:block;border:1px solid white;color:white; border-radius: 5px; margin-bottom: 10px; padding:5px; text-decoration: none;}
-
-.compact-table {
-    width: auto;
+* {
+    box-sizing: border-box;
+    font-family: "Nunito", sans-serif;
+    font-style: normal;
 }
 
-
-/*panely*/
-.panel {display:block;padding:10px;border-radius:5px;border: 1px solid var(--border_color) }
-
-/*Přihlašovací formulář*/
-.log_form{
-    background:var(--form_back);width:35em;
-    margin-bottom: 1em;position:relative;
-    margin-left: 15px;
+:root {
+    --blue:        #2563eb;
+    --blue-dark:   #1d4ed8;
+    --blue-light:  #dbeafe;
+    --black:       #111827;
+    --gray-dark:   #374151;
+    --gray-mid:    #6b7280;
+    --gray-light:  #e5e7eb;
+    --gray-bg:     #f3f4f6;
+    --white:       #ffffff;
+    --danger-bg:   #fee2e2;
+    --danger-border: #dc2626;
+    --success-bg:  #dcfce7;
+    --success-border: #16a34a;
+    --warning-bg:  #fef9c3;
+    --warning-border: #ca8a04;
 }
-.log_form div{ display:flex;width:90%;margin:auto;margin-top:1em;}
-.log_form div * {font-size:1.1em;display:block;position:relative;}
-.log_form div label {width:30%;padding:3px;text-align: right;}
-.log_form div input,.log_form div textarea {width:70%;padding:3px;text-align: left;}
-.log_form div input[type="submit"] {width:100%;padding:3px;text-align: center;}
 
-.invalid-feedback {position:absolute;top:0;left:10;display:none}
+body {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--gray-bg);
+    font-size: clamp(13px, 1vw, 16px);
+    color: var(--black);
+}
 
+/* ── Top bar ── */
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    height: 50px;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,.4);
+}
+.topbar-brand {
+    font-size: .95rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--blue-light);
+}
+.topbar-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.topbar-name {
+    color: #ccc;
+    font-size: .85rem;
+    margin-right: 4px;
+}
+.topbar-btn {
+    background: none;
+    border: 1px solid #444;
+    color: #ccc;
+    font-size: .82rem;
+    padding: 5px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color .15s, color .15s;
+}
+.topbar-btn:hover {
+    border-color: var(--blue-light);
+    color: var(--white);
+}
+.topbar-logout {
+    border-color: #5c2020;
+    color: #f87171;
+}
+.topbar-logout:hover {
+    border-color: #dc2626;
+    color: #fca5a5;
+}
 
+/* ── App body (sidebar + content) ── */
+.app-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+    width: 220px;
+    background: var(--black);
+    color: var(--white);
+    padding: 24px 16px;
+    flex-shrink: 0;
+}
+
+.sidebar h2 {
+    color: var(--blue-light);
+    font-size: 1.1em;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    margin: 0 0 20px;
+}
+
+nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+nav ul li a {
+    display: block;
+    color: var(--gray-light);
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    transition: background .15s, color .15s;
+}
+
+nav ul li a:hover {
+    background: var(--blue);
+    color: var(--white);
+}
+
+/* ── Main content ── */
+.content {
+    flex: 1;
+    padding: 32px;
+}
+
+/* ── Login page (bez sidebaru) ── */
+.login-page {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #c8d0db;
+}
+
+/* ── Přihlašovací karta ── */
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,.18);
+}
+
+.login-card-header {
+    background: var(--black);
+    padding: 28px 40px 24px;
+    text-align: center;
+}
+
+.login-card-header h2 {
+    margin: 0;
+    font-size: 1.4em;
+    font-weight: 700;
+    color: var(--blue-light);
+    letter-spacing: .02em;
+}
+
+.login-card-header .app-label {
+    display: block;
+    font-size: .75em;
+    color: var(--gray-mid);
+    margin-top: 4px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.login-card-body {
+    background: var(--white);
+    padding: 32px 40px 36px;
+}
+
+.login-card-body .field {
+    margin-bottom: 18px;
+}
+
+.login-card-body label {
+    display: block;
+    font-size: .82em;
+    font-weight: 700;
+    color: var(--gray-dark);
+    margin-bottom: 7px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.login-card-body input[type=text],
+.login-card-body input[type=password] {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--gray-light);
+    border-radius: 7px;
+    font-size: 1em;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    background: var(--gray-bg);
+    color: var(--black);
+}
+
+.login-card-body input[type=text]:focus,
+.login-card-body input[type=password]:focus {
+    border-color: var(--blue);
+    background: var(--white);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+
+.login-card-body input[type=submit] {
+    width: 100%;
+    padding: 12px;
+    margin-top: 6px;
+    background: var(--blue);
+    color: var(--white);
+    border: none;
+    border-radius: 7px;
+    font-size: 1em;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .03em;
+    transition: background .15s, transform .1s;
+}
+
+.login-card-body input[type=submit]:hover  { background: var(--blue-dark); }
+.login-card-body input[type=submit]:active { transform: scale(.98); }
+
+/* ── Obecné formuláře (users, devices…) ── */
+.log_form {
+    background: var(--white);
+    border: 1px solid var(--gray-light);
+    border-radius: 8px;
+    padding: 20px 24px;
+    width: 100%;
+    max-width: 720px;
+    margin-bottom: 1.5em;
+}
+
+.log_form div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.log_form div label {
+    width: 38%;
+    font-weight: 600;
+    color: var(--gray-dark);
+    font-size: .9em;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.log_form div input,
+.log_form div textarea,
+.log_form div select {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--gray-light);
+    border-radius: 5px;
+    font-size: .95em;
+    outline: none;
+}
+
+.log_form div input:focus,
+.log_form div textarea:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px var(--blue-light);
+}
+
+.log_form div input[type=submit],
+.log_form div button[type=submit] {
+    flex: 1;
+    padding: 8px;
+    background: var(--blue);
+    color: var(--white);
+    border: none;
+    border-radius: 5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.log_form div input[type=submit]:hover {
+    background: var(--blue-dark);
+}
+
+/* ── Flash zprávy ── */
+.flash-list {
+    max-width: 540px;
+    margin: 0 auto 1.5em;
+}
+
+.flash-item {
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: .95em;
+    border-left: 4px solid;
+}
+
+.flash-item.danger  { background: var(--danger-bg);  border-color: var(--danger-border);  color: #7f1d1d; }
+.flash-item.success { background: var(--success-bg); border-color: var(--success-border); color: #14532d; }
+.flash-item.warning { background: var(--warning-bg); border-color: var(--warning-border); color: #713f12; }
+.flash-item.info    { background: var(--blue-light); border-color: var(--blue);            color: #1e3a8a; }
+
+/* ── Compact tabulka ── */
+.compact-table { width: auto; }
+
+/* ── Inline form ── */
 .inline-form {
     display: inline;
     margin: 0;
     padding: 0;
     border: none;
+    background: none;
 }
 
-.inline-form input[type="submit"],
-.inline-form button[type="submit"] {
+.inline-form input[type=submit],
+.inline-form button[type=submit] {
     border: none;
-    
+    background: none;
 }
 
+/* ── Stránka dat zařízení ── */
+.page-header {
+    margin-bottom: 24px;
+}
+.page-header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--black);
+    margin: 0 0 4px;
+}
+.page-subtitle {
+    color: var(--gray-mid);
+    font-size: .95rem;
+    margin: 0;
+}
 
-/*flash boxy*/
-ul.flash {display:block;width:50em;margin:auto;padding:0;margin-top:2em}
-ul.flash li {display:block; background:var(--warn-back);border:1px solid var(--warn-border);padding:0.5em;border-radius: 5px;}
+.data-card {
+    border: 1px solid var(--gray-light);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
 
+.data-card table thead th {
+    background: var(--black);
+    color: var(--white);
+    font-size: .85rem;
+    font-weight: 600;
+    padding: 10px 14px;
+    border: none;
+}
+
+.data-card table tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--gray-light);
+    font-size: .92rem;
+    vertical-align: middle;
+}
+
+.data-card table tbody tr:last-child td { border-bottom: none; }
+.data-card table tbody tr:hover { background: var(--gray-bg); }
+
+/* ── Stat karty (dashboard) ── */
+.stat-card {
+    background: var(--white);
+    border: 1px solid var(--gray-light);
+    border-radius: 10px;
+    padding: 16px 24px;
+    min-width: 150px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.stat-label {
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--gray-mid);
+    margin-bottom: 6px;
+}
+.stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--black);
+}
+
+.ts-cell { white-space: nowrap; color: var(--gray-dark); font-size: .88rem; }
+.action-cell { white-space: nowrap; }
+.action-cell .btn { margin-right: 4px; }
+
+.text-muted { color: var(--gray-mid); }
+
+/* ── Form card (zařízení, nastavení…) ── */
+.form-card {
+    background: var(--white);
+    border: 1px solid var(--gray-light);
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 680px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,.07);
+}
+
+.form-card-header {
+    background: var(--black);
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.form-card-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--blue-light);
+    letter-spacing: .03em;
+}
+
+.form-card-header .fc-subtitle {
+    font-size: .78rem;
+    color: var(--gray-mid);
+    margin-top: 2px;
+    display: block;
+}
+
+.form-card-body {
+    padding: 24px 28px 28px;
+}
+
+.form-field {
+    margin-bottom: 18px;
+}
+
+.form-field label {
+    display: block;
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--gray-dark);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.form-field input[type=text],
+.form-field textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--gray-light);
+    border-radius: 7px;
+    font-size: .95rem;
+    outline: none;
+    background: var(--gray-bg);
+    color: var(--black);
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.form-field input[type=text]:focus,
+.form-field textarea:focus {
+    border-color: var(--blue);
+    background: var(--white);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+
+.form-field .field-hint {
+    margin-top: 6px;
+    font-size: .8rem;
+    color: var(--gray-mid);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.topic-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    background: var(--gray-bg);
+    border: 1px solid var(--gray-light);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: .82rem;
+    font-family: monospace;
+    letter-spacing: .02em;
+    margin-top: 8px;
+}
+
+.topic-preview .tp-fixed  { color: var(--gray-mid); }
+.topic-preview .tp-var    { color: var(--blue-dark); font-weight: 700; }
+
+.form-card-footer {
+    padding: 0 28px 24px;
+    display: flex;
+    gap: 10px;
+}
+
+/* ── Odznaky klasifikace ── */
+.badge-train {
+    display: inline-block;
+    padding: 2px 10px;
+    background: var(--blue-light);
+    color: var(--blue-dark);
+    border-radius: 12px;
+    font-size: .82rem;
+    font-weight: 600;
+}
+.badge-danger {
+    display: inline-block;
+    padding: 2px 10px;
+    background: #fee2e2;
+    color: #b91c1c;
+    border-radius: 12px;
+    font-size: .82rem;
+    font-weight: 600;
+}
+.badge-ok {
+    display: inline-block;
+    padding: 2px 10px;
+    background: #dcfce7;
+    color: #15803d;
+    border-radius: 12px;
+    font-size: .82rem;
+    font-weight: 600;
+}
+
+/* ── Prázdný stav ── */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray-mid);
+}
+
+/* ── Tlačítka ── */
+.btn { display: inline-block; padding: 5px 14px; border-radius: 5px;
+       font-size: .85rem; font-weight: 500; cursor: pointer; border: 1px solid transparent;
+       transition: background .15s, color .15s, border-color .15s; }
+.btn-sm { padding: 3px 10px; font-size: .8rem; }
+.btn-primary        { background: var(--blue);       color: var(--white); border-color: var(--blue); }
+.btn-primary:hover  { background: var(--blue-dark);  border-color: var(--blue-dark); }
+.btn-secondary        { background: var(--gray-dark);  color: var(--white); border-color: var(--gray-dark); }
+.btn-secondary:hover  { background: #1f2937; border-color: #1f2937; }
+.btn-success        { background: #16a34a; color: var(--white); border-color: #16a34a; }
+.btn-success:hover  { background: #15803d; border-color: #15803d; }
+.btn-outline-primary        { background: transparent; color: var(--blue); border-color: var(--blue); }
+.btn-outline-primary:hover  { background: var(--blue); color: var(--white); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ── Chart modal ── */
+.chart-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 2000;
+}
+
+.chart-modal {
+    background: var(--white);
+    border-radius: 10px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 860px;
+    height: 560px;
+    min-width: 380px;
+    min-height: 300px;
+    max-width: 95vw;
+    max-height: 92vh;
+    resize: both;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,.28);
+    display: flex;
+    flex-direction: column;
+    z-index: 2001;
+}
+
+.chart-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--black);
+    color: var(--white);
+    padding: 14px 20px;
+    border-radius: 10px 10px 0 0;
+}
+.chart-modal-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--blue-light);
+}
+
+.btn-close-modal {
+    background: none;
+    border: none;
+    color: var(--gray-mid);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+.btn-close-modal:hover { color: var(--white); }
+
+.chart-loading {
+    padding: 40px;
+    text-align: center;
+    color: var(--gray-mid);
+}
+
+.chart-info {
+    padding: 8px 20px;
+    font-size: .85rem;
+    background: var(--blue-light);
+    color: var(--blue-dark);
+    border-bottom: 1px solid #bfdbfe;
+}
+
+.chart-canvas-wrap {
+    flex: 1;
+    min-height: 0;
+    padding: 12px 16px 14px;
+    position: relative;
+}
+
+#signal-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
 
 

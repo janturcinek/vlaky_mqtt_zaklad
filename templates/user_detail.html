@@ -38,16 +38,13 @@
 <h3>{{ labels["role_uzivatele"] }}</h3>
 
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
+{% if flashed_messages %}
+  <div class="flash-list">
+    {% for category, message in flashed_messages %}
+      <div class="flash-item {{ category }}">{{ message }}</div>
     {% endfor %}
-  {% endif %}
-{% endwith %}
+  </div>
+{% endif %}
 
 <form method="post" class="p-3 border rounded bg-light log_form">
     <div class="mb-3">

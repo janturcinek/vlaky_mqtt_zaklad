@@ -3,16 +3,13 @@
 {% block content %}
 <h2>{{ labels["sprava_uzivatelu"] }}</h2>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>
+{% if flashed_messages %}
+  <div class="flash-list">
+    {% for category, message in flashed_messages %}
+      <div class="flash-item {{ category }}">{{ message }}</div>
     {% endfor %}
-  {% endif %}
-{% endwith %}
+  </div>
+{% endif %}
 
 
 <h3>{{ labels["novy_uzivatel"] }}</h3>

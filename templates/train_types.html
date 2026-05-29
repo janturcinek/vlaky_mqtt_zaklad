@@ -1,0 +1,147 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Databáze typů vlaků</h1>
+    <p class="page-subtitle">Správa lokomotiv a vozidel používaných při klasifikaci.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 380px;gap:28px;align-items:start;">
+
+    {# ── Tabulka typů ── #}
+    <div>
+        <div class="data-card">
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;text-align:left;">Název</th>
+                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;text-align:right;">Poměr (ratio)</th>
+                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;text-align:right;">Rozvor (mm)</th>
+                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;text-align:left;">Popis</th>
+                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;text-align:left;">Přidáno</th>
+                        <th style="background:var(--black);color:var(--white);padding:9px 14px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for t in typy %}
+                <tr style="border-bottom:1px solid var(--gray-light);{% if editovany and editovany.train_type_id == t.train_type_id %}background:#f8f8f8;{% endif %}">
+                    <td style="padding:9px 14px;font-weight:600;">{{ t.typ }}</td>
+                    <td style="padding:9px 14px;text-align:right;font-family:monospace;">{{ '%.6f' % t.pomer }}</td>
+                    <td style="padding:9px 14px;text-align:right;">{{ t.dvojkoli_mm }}</td>
+                    <td style="padding:9px 14px;color:var(--gray-mid);font-size:.85rem;">{{ t.popis or '—' }}</td>
+                    <td style="padding:9px 14px;color:var(--gray-mid);font-size:.82rem;white-space:nowrap;">{{ t.created }}</td>
+                    <td style="padding:9px 14px;white-space:nowrap;">
+                        <a href="/auth/train-types/edit/{{ t.train_type_id }}"
+                           style="font-size:.8rem;padding:3px 10px;border:1px solid var(--gray-light);border-radius:5px;text-decoration:none;color:var(--black);margin-right:4px;">
+                            Upravit
+                        </a>
+                        <form method="post" action="/auth/train-types/delete/{{ t.train_type_id }}" style="display:inline;">
+                            <button type="submit"
+                                    style="font-size:.8rem;padding:3px 10px;border:1px solid #e55;border-radius:5px;background:none;cursor:pointer;color:#c33;"
+                                    onclick="return confirm('Smazat typ {{ t.typ }}?')">
+                                Smazat
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" style="padding:20px;text-align:center;color:var(--gray-mid);">Žádné typy.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# ── Formulář přidat / upravit ── #}
+    <div>
+        {% if editovany %}
+        {# --- editace --- #}
+        <div style="background:var(--white);border:1px solid var(--gray-light);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);">
+            <div style="background:var(--black);color:var(--white);padding:11px 16px;font-weight:700;font-size:.95rem;">
+                Upravit typ: {{ editovany.typ }}
+            </div>
+            <form method="post" action="/auth/train-types/edit/{{ editovany.train_type_id }}" style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+                <div>
+                    <label style="font-size:.84rem;font-weight:600;display:block;margin-bottom:4px;">Název</label>
+                    <input type="text" name="typ" value="{{ editovany.typ }}" required
+                           style="width:100%;padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="font-size:.84rem;font-weight:600;display:block;margin-bottom:4px;">
+                        Poměr dt23/dt12
+                        <span style="font-weight:400;color:var(--gray-mid);font-size:.78rem;">(timing ratio)</span>
+                    </label>
+                    <input type="number" name="pomer" value="{{ editovany.pomer }}" step="0.000001" min="0.01" required
+                           style="width:100%;padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="font-size:.84rem;font-weight:600;display:block;margin-bottom:4px;">
+                        Rozvor dvojkolí (mm)
+                        <span style="font-weight:400;color:var(--gray-mid);font-size:.78rem;">(vzdálenost os)</span>
+                    </label>
+                    <input type="number" name="dvojkoli_mm" value="{{ editovany.dvojkoli_mm }}" min="100" required
+                           style="width:100%;padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="font-size:.84rem;font-weight:600;display:block;margin-bottom:4px;">Poznámka</label>
+                    <textarea name="popis" rows="2"
+                              style="width:100%;padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;box-sizing:border-box;">{{ editovany.popis }}</textarea>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button type="submit" name="uloz_typ" value="1" class="btn btn-primary">Uložit změny</button>
+                    <a href="/auth/train-types" style="padding:7px 14px;border:1px solid var(--gray-light);border-radius:6px;text-decoration:none;color:var(--black);font-size:.88rem;">Zrušit</a>
+                </div>
+            </form>
+        </div>
+        {% else %}
+        {# --- přidat nový --- #}
+        <div style="background:var(--white);border:1px solid var(--gray-light);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);">
+            <div style="background:var(--black);color:var(--white);padding:11px 16px;font-weight:700;font-size:.95rem;">
+                Přidat nový typ
+            </div>
+            <form method="post" action="/auth/train-types" style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+                <div>
+                    <label style="font-size:.84rem;font-weight:600;display:block;margin-bottom:4px;">Název</label>
+                    <input type="text" name="typ" placeholder="např. Škoda 109E" required
+                           style="width:100%;padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="font-size:.84rem;font-weight:600;display:block;margin-bottom:4px;">
+                        Poměr dt23/dt12
+                        <span style="font-weight:400;color:var(--gray-mid);font-size:.78rem;">(timing ratio)</span>
+                    </label>
+                    <input type="number" name="pomer" placeholder="např. 2.48" step="0.000001" min="0.01" required
+                           style="width:100%;padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;box-sizing:border-box;">
+                    <small style="color:var(--gray-mid);font-size:.78rem;">
+                        Hodnotu najdeš jako <code>loco_ratio</code> v záznamu průjezdu daného vlaku.
+                    </small>
+                </div>
+                <div>
+                    <label style="font-size:.84rem;font-weight:600;display:block;margin-bottom:4px;">
+                        Rozvor dvojkolí (mm)
+                        <span style="font-weight:400;color:var(--gray-mid);font-size:.78rem;">(vzdálenost náprav)</span>
+                    </label>
+                    <input type="number" name="dvojkoli_mm" placeholder="např. 2500" min="100" required
+                           style="width:100%;padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="font-size:.84rem;font-weight:600;display:block;margin-bottom:4px;">Poznámka</label>
+                    <textarea name="popis" rows="2" placeholder="volitelný popis..."
+                              style="width:100%;padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;box-sizing:border-box;"></textarea>
+                </div>
+                <div>
+                    <button type="submit" name="pridej_typ" value="1" class="btn btn-primary">Přidat typ</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        {# -- nápověda -- #}
+        <div style="margin-top:16px;padding:14px;background:#f8f8f8;border-radius:8px;border:1px solid var(--gray-light);font-size:.82rem;color:var(--gray-dark);">
+            <strong>Jak zjistit poměr?</strong><br>
+            Otevři data zařízení → klikni na záznamy průjezdu daného vlaku → sloupec <code>loco_ratio</code>. Průměr z více průjezdů zpřesní hodnotu.
+        </div>
+    </div>
+</div>
+
+{% endblock %}

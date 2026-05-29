@@ -3,9 +3,9 @@
         <ul>
             <li><a href="/auth/dashboard">{{labels["nastenka"] }}</a></li>
             <li><a href="/auth/devices">{{ labels["sprava_zarizeni"] }}</a></li>
-           {%if user.admin %}
+           {%if current_user.admin %}
             <li><a href="/auth/users">{{ labels["sprava_uzivatelu"] }}</a></li>
+            <li><a href="/auth/train-types">Typy vlaků</a></li>
            {% endif %}
-            <li><a href="/auth/logout">{{ labels["odhlasit"] }}</a></li>
         </ul>
     </nav>
