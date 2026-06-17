@@ -549,7 +549,7 @@ def dej_prehled_zarizeni():
             (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id) AS total_trains,
             (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id
                AND COALESCE(m.measured_at, m.assigned) >= datetime('now', '-7 days')) AS trains_week,
-            (SELECT m.assigned FROM messages m WHERE m.device_id = d.device_id
+            (SELECT COALESCE(m.measured_at, datetime(m.assigned, 'localtime')) FROM messages m WHERE m.device_id = d.device_id
                ORDER BY m.message_id DESC LIMIT 1) AS last_train_time,
             (SELECT dc.temperature FROM device_conditions dc WHERE dc.device_id = d.device_id
                ORDER BY dc.condition_id DESC LIMIT 1) AS temperature,
@@ -771,7 +771,7 @@ _PREHLED_SELECT = """
         (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id) AS total_trains,
         (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id
            AND m.assigned >= datetime('now', '-7 days')) AS trains_week,
-        (SELECT m.assigned FROM messages m WHERE m.device_id = d.device_id
+        (SELECT COALESCE(m.measured_at, datetime(m.assigned, 'localtime')) FROM messages m WHERE m.device_id = d.device_id
            ORDER BY m.message_id DESC LIMIT 1) AS last_train_time,
         (SELECT dc.temperature FROM device_conditions dc WHERE dc.device_id = d.device_id
            ORDER BY dc.condition_id DESC LIMIT 1) AS temperature,
