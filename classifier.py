@@ -230,6 +230,22 @@ def classify_bin_file(filepath, threshold=170, min_distance_s=0.05,
     }
 
 
+def get_raw_waveform_data(filepath, max_points=5000):
+    """Vrátí nefiltrovaná (raw) data ze všech 4 kanálů pro vykreslení grafu."""
+    seg, seg_vlt, seg1_int, seg1_vlt = load_bin_channels(filepath)
+    if len(seg) == 0:
+        return [], [], [], [], []
+
+    total = len(seg)
+    step  = max(1, total // max_points)
+
+    def _ds(arr):
+        return [round(float(arr[i]), 2) for i in range(0, len(arr), step)]
+
+    t_ds = [round(i / FS, 4) for i in range(0, total, step)]
+    return t_ds, _ds(seg), _ds(seg_vlt), _ds(seg1_int), _ds(seg1_vlt)
+
+
 def get_waveform_data(filepath, max_points=5000,
                       threshold=170, min_distance_s=0.05,
                       lowcut=1.0, highcut=50.0, filter_order=4, cut_samples=300):

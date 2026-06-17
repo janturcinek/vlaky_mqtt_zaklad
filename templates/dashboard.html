@@ -9,85 +9,85 @@
 {% set total_vlaky = prehled | sum(attribute='total_trains') %}
 {% set tyden_vlaky = prehled | sum(attribute='trains_week') %}
 {% set aktivni = prehled | selectattr('temperature', 'ne', none) | list | length %}
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:32px;">
+<div class="grid-stat-cards">
     <div class="stat-card">
         <div class="stat-label">Zařízení</div>
-        <div class="stat-value">{{ prehled | length }}</div>
+        <div class="stat-value" id="stat-devices">{{ prehled | length }}</div>
     </div>
     <div class="stat-card">
         <div class="stat-label">S telemetrií</div>
-        <div class="stat-value">{{ aktivni }}</div>
+        <div class="stat-value" id="stat-telemetry">{{ aktivni }}</div>
     </div>
     <div class="stat-card">
         <div class="stat-label">Vlaků celkem</div>
-        <div class="stat-value">{{ total_vlaky }}</div>
+        <div class="stat-value" id="stat-total">{{ total_vlaky }}</div>
     </div>
     <div class="stat-card">
         <div class="stat-label">Vlaků tento týden</div>
-        <div class="stat-value">{{ tyden_vlaky }}</div>
+        <div class="stat-value" id="stat-week">{{ tyden_vlaky }}</div>
     </div>
 </div>
 
 {# ── Karty zařízení ── #}
 {% if prehled %}
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;margin-bottom:36px;">
+<div class="grid-device-cards">
 {% for z in prehled %}
 <div id="device-card-{{ z.device_id }}"
      data-device-id="{{ z.device_id }}"
      data-device-label="{{ z.client_id }}{% if z.location %} – {{ z.location }}{% endif %}"
-     style="background:var(--white);border:1px solid var(--gray-light);border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);">
+     class="device-card">
 
     {# -- hlavička karty -- #}
-    <div style="background:var(--black);color:var(--white);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;">
+    <div class="device-card-header">
         <div>
-            <span style="font-weight:700;font-size:1rem;">{{ z.client_id }}</span>
-            {% if z.location %}<span style="font-size:.8rem;opacity:.65;margin-left:8px;">{{ z.location }}</span>{% endif %}
+            <span class="device-name">{{ z.client_id }}</span>
+            {% if z.location %}<span class="device-location">{{ z.location }}</span>{% endif %}
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="device-card-actions">
             <button onclick="hideDevice({{ z.device_id }})"
-                    style="background:none;border:1px solid #555;color:#aaa;font-size:.72rem;padding:3px 9px;border-radius:5px;cursor:pointer;white-space:nowrap;"
+                    class="btn-hide-device"
                     title="Skrýt panel">Skrýt</button>
             <a href="/auth/devices/data/{{ z.device_id }}"
-               style="background:var(--white);color:var(--black);font-size:.75rem;font-weight:700;padding:4px 12px;border-radius:6px;text-decoration:none;white-space:nowrap;">
+               class="btn-view-data">
                 Zobrazit data →
             </a>
         </div>
     </div>
 
-    <div style="padding:14px 16px;">
+    <div class="device-card-body">
 
         {# -- podmínky -- #}
+        <div id="cond-block-{{ z.device_id }}" class="cond-block">
         {% if z.temperature is not none %}
-        <div style="margin-bottom:12px;">
-            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-mid);margin-bottom:6px;">Aktuální podmínky
-                {% if z.conditions_at %}<span style="font-weight:400;font-style:italic;margin-left:4px;">{{ z.conditions_at }}</span>{% endif %}
+            <div class="cond-label">Aktuální podmínky
+                <span class="ts-fmt cond-at" id="cond-at-{{ z.device_id }}">{{ z.conditions_at or '' }}</span>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <span style="background:var(--gray-bg);border-radius:6px;padding:4px 10px;font-size:.85rem;">🌡 {{ z.temperature }} °C</span>
-                <span style="background:var(--gray-bg);border-radius:6px;padding:4px 10px;font-size:.85rem;">💧 {{ z.humidity }} %</span>
-                <span style="background:var(--gray-bg);border-radius:6px;padding:4px 10px;font-size:.85rem;">🔋 {{ z.batt_mv }} mV</span>
-                <span style="background:var(--gray-bg);border-radius:6px;padding:4px 10px;font-size:.85rem;">📶 {{ z.signal_strength }} dBm</span>
+            <div class="cond-badges">
+                <span class="sensor-badge">🌡 <span id="cond-temp-{{ z.device_id }}">{{ z.temperature }}</span> °C</span>
+                <span class="sensor-badge">💧 <span id="cond-hum-{{ z.device_id }}">{{ z.humidity }}</span> %</span>
+                <span class="sensor-badge">🔋 <span id="cond-batt-{{ z.device_id }}">{{ z.batt_mv }}</span> mV</span>
+                <span class="sensor-badge">📶 <span id="cond-sig-{{ z.device_id }}">{{ z.signal_strength }}</span> dBm</span>
             </div>
-        </div>
         {% else %}
-        <div style="margin-bottom:12px;color:var(--gray-mid);font-size:.83rem;font-style:italic;">Žádná telemetrie zatím nepřijata.</div>
+            <div class="cond-empty">Žádná telemetrie zatím nepřijata.</div>
         {% endif %}
+        </div>
 
         {# -- statistiky vlaků -- #}
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;border-top:1px solid var(--gray-light);padding-top:12px;">
-            <div style="text-align:center;">
-                <div style="font-size:1.4rem;font-weight:700;line-height:1.1;">{{ z.total_trains }}</div>
-                <div style="font-size:.72rem;color:var(--gray-mid);margin-top:2px;">Celkem vlaků</div>
+        <div class="train-stats">
+            <div class="train-stat-cell">
+                <div id="trains-total-{{ z.device_id }}" class="train-count">{{ z.total_trains }}</div>
+                <div class="train-stat-label">Celkem vlaků</div>
             </div>
-            <div style="text-align:center;border-left:1px solid var(--gray-light);border-right:1px solid var(--gray-light);">
-                <div style="font-size:1.4rem;font-weight:700;line-height:1.1;">{{ z.trains_week }}</div>
-                <div style="font-size:.72rem;color:var(--gray-mid);margin-top:2px;">Tento týden</div>
+            <div class="train-stat-cell-mid">
+                <div id="trains-week-{{ z.device_id }}" class="train-count">{{ z.trains_week }}</div>
+                <div class="train-stat-label">Tento týden</div>
             </div>
-            <div style="text-align:center;">
-                <div style="font-size:.82rem;font-weight:600;line-height:1.3;word-break:break-all;">
-                    {% if z.last_train_time %}{{ z.last_train_time }}{% else %}<span style="color:var(--gray-mid);">—</span>{% endif %}
+            <div class="train-stat-cell">
+                <div class="ts-cell trains-last" id="trains-last-{{ z.device_id }}">
+                    {% if z.last_train_time %}{{ z.last_train_time }}{% else %}<span class="text-muted">—</span>{% endif %}
                 </div>
-                <div style="font-size:.72rem;color:var(--gray-mid);margin-top:2px;">Poslední vlak</div>
+                <div class="train-stat-label">Poslední vlak</div>
             </div>
         </div>
 
@@ -96,40 +96,40 @@
 {% endfor %}
 </div>
 {% else %}
-<p style="color:var(--gray-mid);">Žádná registrovaná zařízení.</p>
+<p class="text-muted">Žádná registrovaná zařízení.</p>
 {% endif %}
 
 {# ── Spodní sekce: skrytá zařízení + MQTT log ── #}
-<div style="display:grid;grid-template-columns:{% if current_user.admin %}280px 1fr{% else %}1fr{% endif %};gap:24px;margin-top:8px;">
+<div class="grid-bottom{% if current_user.admin %} has-sidebar{% endif %}">
 
     {# -- Skrytá zařízení -- #}
     <div>
-        <h2 style="font-size:1.05rem;font-weight:700;margin-bottom:12px;">Skrytá zařízení</h2>
-        <div class="data-card" id="hidden-list" style="padding:10px 16px;min-height:56px;">
-            <p style="color:var(--gray-mid);font-size:.85rem;margin:6px 0;">Žádná skrytá zařízení.</p>
+        <h2 class="section-heading">Skrytá zařízení</h2>
+        <div class="data-card list-card" id="hidden-list">
+            <p class="hidden-list-empty">Žádná skrytá zařízení.</p>
         </div>
     </div>
 
     {% if current_user.admin %}
     {# -- Live MQTT log -- #}
     <div>
-        <h2 style="font-size:1.05rem;font-weight:700;margin-bottom:12px;">
+        <h2 class="section-heading">
             Live MQTT log
-            <span id="log-status" style="font-size:.75rem;font-weight:400;color:var(--gray-mid);margin-left:8px;"></span>
+            <span id="log-status" class="log-status"></span>
         </h2>
-        <div class="data-card" style="max-height:380px;overflow-y:auto;">
-            <table style="width:100%;border-collapse:collapse;">
+        <div class="data-card compact scrollable">
+            <table>
                 <thead>
                     <tr>
-                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;font-weight:600;white-space:nowrap;">Čas</th>
-                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;font-weight:600;">Topic</th>
-                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;font-weight:600;">Client ID</th>
-                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;font-weight:600;">Stav</th>
-                        <th style="background:var(--black);color:var(--white);padding:9px 14px;font-size:.83rem;font-weight:600;">Info</th>
+                        <th>Čas</th>
+                        <th>Topic</th>
+                        <th>Client ID</th>
+                        <th>Stav</th>
+                        <th>Info</th>
                     </tr>
                 </thead>
                 <tbody id="mqtt-log-body">
-                    <tr><td colspan="5" style="padding:20px;text-align:center;color:var(--gray-mid);">Čekám na zprávy…</td></tr>
+                    <tr><td colspan="5" class="log-empty-cell">Čekám na zprávy…</td></tr>
                 </tbody>
             </table>
         </div>
@@ -167,15 +167,15 @@ function applyHidden() {
     const list = document.getElementById('hidden-list');
     if (!list) return;
     if (!hidden.length) {
-        list.innerHTML = '<p style="color:var(--gray-mid);font-size:.85rem;margin:6px 0;">Žádná skrytá zařízení.</p>';
+        list.innerHTML = '<p class="hidden-list-empty">Žádná skrytá zařízení.</p>';
         return;
     }
     list.innerHTML = hidden.map(id => {
         const card = document.querySelector(`[data-device-id="${id}"]`);
         const label = card ? card.dataset.deviceLabel : `ID ${id}`;
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-light);gap:8px;">
-            <span style="font-size:.88rem;">${label}</span>
-            <button onclick="showDevice(${id})" style="background:none;border:1px solid var(--blue);color:var(--blue);font-size:.76rem;padding:3px 10px;border-radius:5px;cursor:pointer;white-space:nowrap;">Zobrazit</button>
+        return `<div class="hidden-device-item">
+            <span class="hidden-device-label">${label}</span>
+            <button onclick="showDevice(${id})" class="btn-show-device">Zobrazit</button>
         </div>`;
     }).join('');
 }
@@ -191,7 +191,7 @@ function updateLog() {
             const tbody = document.getElementById('mqtt-log-body');
             const status = document.getElementById('log-status');
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--gray-mid);">Zatím žádné zprávy.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="log-empty-cell">Zatím žádné zprávy.</td></tr>';
                 return;
             }
             status.textContent = `(${rows.length} zpráv)`;
@@ -199,13 +199,13 @@ function updateLog() {
                 const ok = r.registered;
                 const badge = ok
                     ? '<span class="badge-ok">✓ registrováno</span>'
-                    : `<span class="badge-danger">✗ neregistrováno</span> <a href="/auth/devices?prefill_client_id=${encodeURIComponent(r.client_id)}" class="btn btn-sm btn-primary" style="margin-left:6px;">Registrovat</a>`;
-                return `<tr style="border-bottom:1px solid var(--gray-light);">
-                    <td style="padding:8px 14px;white-space:nowrap;color:var(--gray-dark);font-size:.85rem;">${r.time}</td>
-                    <td style="padding:8px 14px;"><code style="font-size:.82rem;">${r.topic}</code></td>
-                    <td style="padding:8px 14px;"><code style="font-size:.82rem;background:var(--gray-bg);padding:1px 6px;border-radius:4px;">${r.client_id}</code></td>
-                    <td style="padding:8px 14px;">${badge}</td>
-                    <td style="padding:8px 14px;color:var(--gray-mid);font-size:.83rem;">${r.note}</td>
+                    : `<span class="badge-danger">✗ neregistrováno</span> <a href="/auth/devices?prefill_client_id=${encodeURIComponent(r.client_id)}" class="btn btn-sm btn-primary">Registrovat</a>`;
+                return `<tr class="log-row">
+                    <td class="log-td-time">${r.time}</td>
+                    <td class="log-td"><code class="log-code">${r.topic}</code></td>
+                    <td class="log-td"><code class="log-code-bg">${r.client_id}</code></td>
+                    <td class="log-td">${badge}</td>
+                    <td class="log-td-info">${r.note}</td>
                 </tr>`;
             }).join('');
         })
@@ -214,5 +214,55 @@ function updateLog() {
 updateLog();
 setInterval(updateLog, 3000);
 {% endif %}
+
+// ── Refresh karet každých 15 s ──
+function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val != null ? val : '—';
+}
+function updateDashboard() {
+    fetch('/auth/api/dashboard')
+        .then(r => r.json())
+        .then(data => {
+            let totalTrains = 0, totalWeek = 0, withTelemetry = 0;
+            data.forEach(z => {
+                const id = z.device_id;
+                // podmínky
+                if (z.temperature != null) {
+                    withTelemetry++;
+                    setText('cond-temp-' + id, z.temperature);
+                    setText('cond-hum-'  + id, z.humidity);
+                    setText('cond-batt-' + id, z.batt_mv);
+                    setText('cond-sig-'  + id, z.signal_strength);
+                    const atEl = document.getElementById('cond-at-' + id);
+                    if (atEl) {
+                        atEl.textContent = z.conditions_at || '';
+                        const fmt = typeof formatTsFmt === 'function' ? formatTsFmt(z.conditions_at || '') : null;
+                        if (fmt) atEl.textContent = fmt;
+                    }
+                }
+                // statistiky
+                setText('trains-total-' + id, z.total_trains);
+                setText('trains-week-'  + id, z.trains_week);
+                const lastEl = document.getElementById('trains-last-' + id);
+                if (lastEl) {
+                    if (z.last_train_time) {
+                        const html = typeof formatTsCell === 'function' ? formatTsCell(z.last_train_time) : null;
+                        lastEl.innerHTML = html || z.last_train_time;
+                    } else {
+                        lastEl.innerHTML = '<span class="text-muted">—</span>';
+                    }
+                }
+                totalTrains += z.total_trains || 0;
+                totalWeek   += z.trains_week  || 0;
+            });
+            setText('stat-devices',   data.length);
+            setText('stat-telemetry', withTelemetry);
+            setText('stat-total',     totalTrains);
+            setText('stat-week',      totalWeek);
+        })
+        .catch(() => {});
+}
+setInterval(updateDashboard, 15000);
 </script>
 {% endblock %}

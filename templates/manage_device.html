@@ -13,7 +13,7 @@
     </div>
     <div>
         <label></label>
-        <small style="color:var(--gray-mid);font-size:.82em;">Prostřední část topicu: <code>NRF/<strong id="topic-preview-val">{{ data['oznaceni'] or '…' }}</strong>/UP_STREAM</code></small>
+        <small class="topic-hint">Prostřední část topicu: <code>NRF/<strong id="topic-preview-val">{{ data['oznaceni'] or '…' }}</strong>/UP_STREAM</code></small>
     </div>
     <div>
         <label for="poloha">{{ labels["poloha"] }} (umístění):</label>
@@ -30,36 +30,36 @@
 </form>
 
 {# ── Správa přístupů ── #}
-<div class="log_form" style="margin-top:32px;">
-    <h2 style="font-size:1.05rem;font-weight:700;margin-bottom:16px;">Přístup k zařízení</h2>
+<div class="log_form access-section">
+    <h2 class="section-heading">Přístup k zařízení</h2>
 
     {# -- stávající přístupy -- #}
     {% if pristupy %}
-    <table style="width:100%;border-collapse:collapse;margin-bottom:18px;">
+    <table class="access-table">
         <thead>
             <tr>
-                <th style="background:var(--black);color:var(--white);padding:8px 12px;font-size:.82rem;text-align:left;">Uživatel</th>
-                <th style="background:var(--black);color:var(--white);padding:8px 12px;font-size:.82rem;text-align:center;">Může editovat</th>
-                <th style="background:var(--black);color:var(--white);padding:8px 12px;font-size:.82rem;text-align:left;">Přidáno</th>
-                <th style="background:var(--black);color:var(--white);padding:8px 12px;"></th>
+                <th>Uživatel</th>
+                <th class="td-right">Může editovat</th>
+                <th>Přidáno</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
         {% for p in pristupy %}
-        <tr style="border-bottom:1px solid var(--gray-light);">
-            <td style="padding:8px 12px;">
+        <tr>
+            <td>
                 <strong>{{ p.name }} {{ p.surname }}</strong>
-                <span style="color:var(--gray-mid);font-size:.82rem;margin-left:6px;">{{ p.login }}</span>
+                <span class="access-user-login">{{ p.login }}</span>
             </td>
-            <td style="padding:8px 12px;text-align:center;">
-                {% if p.can_edit %}<span class="badge-ok">✓ ano</span>{% else %}<span style="color:var(--gray-mid);">ne</span>{% endif %}
+            <td class="td-right">
+                {% if p.can_edit %}<span class="badge-ok">✓ ano</span>{% else %}<span class="text-muted">ne</span>{% endif %}
             </td>
-            <td style="padding:8px 12px;font-size:.82rem;color:var(--gray-mid);">{{ p.assigned }}</td>
-            <td style="padding:8px 12px;">
-                <form method="post" style="display:inline;">
+            <td class="access-ts">{{ p.assigned }}</td>
+            <td>
+                <form method="post" class="inline-del">
                     <input type="hidden" name="odeber_user_id" value="{{ p.user_id }}">
                     <button type="submit" name="odeber_pristup" value="1"
-                            style="background:none;border:1px solid var(--gray-light);border-radius:5px;padding:3px 10px;cursor:pointer;font-size:.8rem;color:var(--gray-dark);"
+                            class="btn-remove-access"
                             onclick="return confirm('Odebrat přístup uživateli {{ p.name }} {{ p.surname }}?')">
                         Odebrat
                     </button>
@@ -70,31 +70,30 @@
         </tbody>
     </table>
     {% else %}
-    <p style="color:var(--gray-mid);font-size:.9rem;margin-bottom:16px;">Žádní další uživatelé nemají přístup k tomuto zařízení.</p>
+    <p class="text-muted-para">Žádní další uživatelé nemají přístup k tomuto zařízení.</p>
     {% endif %}
 
     {# -- přidat přístup -- #}
     {% if dostupni_uziv %}
-    <form method="post" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+    <form method="post" class="add-access-form">
         <div>
-            <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:4px;">Přidat uživatele</label>
-            <select name="pristup_user_id" required
-                    style="padding:7px 10px;border:1px solid var(--gray-light);border-radius:6px;min-width:200px;">
+            <label class="add-access-label">Přidat uživatele</label>
+            <select name="pristup_user_id" required class="add-access-select">
                 {% for u in dostupni_uziv %}
                 <option value="{{ u[0] }}">{{ u[1] }} {{ u[2] }} ({{ u[3] }})</option>
                 {% endfor %}
             </select>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;padding-bottom:4px;">
+        <div class="add-access-check">
             <input type="checkbox" name="pristup_can_edit" id="pristup_can_edit" value="1">
-            <label for="pristup_can_edit" style="font-size:.85rem;">Může editovat</label>
+            <label for="pristup_can_edit" class="add-access-check-label">Může editovat</label>
         </div>
         <div>
             <button type="submit" name="pridej_pristup" value="1" class="btn btn-primary">Přidat přístup</button>
         </div>
     </form>
     {% else %}
-    <p style="color:var(--gray-mid);font-size:.85rem;">Všichni uživatelé již mají přístup.</p>
+    <p class="empty-text">Všichni uživatelé již mají přístup.</p>
     {% endif %}
 </div>
 
@@ -105,4 +104,3 @@
 </script>
 
 {% endblock %}
-

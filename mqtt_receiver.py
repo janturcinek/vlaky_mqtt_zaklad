@@ -3,14 +3,17 @@ import paho.mqtt.client as mqtt
 from instance import data_funkce
 import classifier as clf
 import struct
+import traceback
 from datetime import datetime
 import numpy as np
 import os
 from collections import deque
-from nastaveni import WAVE_SAMPLE_LEN, format_str, FORMAT_TELEMETRY_V2
+from nastaveni import WAVE_SAMPLE_LEN, format_str, FORMAT_TELEMETRY_V1, FORMAT_TELEMETRY_V2
 from time import sleep, monotonic
+from app_logger import get_logger
 
-_TELEMETRY_SIZE = struct.calcsize(FORMAT_TELEMETRY_V2)
+_TELEMETRY_V1_SIZE = struct.calcsize(FORMAT_TELEMETRY_V1)
+_TELEMETRY_SIZE = struct.calcsize(FORMAT_TELEMETRY_V2)  # V2
 
 packet_buffers = {}  # Globální buffer pro zprávy
 buffer_timestamps = {}  # kdy přišel první paket každého bufferu (monotonic)
@@ -30,9 +33,7 @@ def _log_message(topic: str, client_id: str, registered: bool, note: str = ""):
     })
 
 
-packet_timestamp_workaround=int(datetime.now().timestamp())
-updated_workaround_timestamp=1
-timestamp_str=0
+_device_session: dict = {}  # device_id -> {"ts": int, "ts_str": str}
 on_msg_call_cntr=0
 
 class DataPacket:
@@ -74,44 +75,72 @@ def on_sys_message(client_id: str, topic: str, payload: bytes):
         _log_message(topic, client_id, False, "zařízení není registrováno")
         return
 
-    if len(payload) < _TELEMETRY_SIZE:
-        _log_message(topic, client_id, True, f"SYS paket příliš krátký ({len(payload)} B)")
+    print(f"[MQTT SYS] {client_id}: payload {len(payload)} B (V1={_TELEMETRY_V1_SIZE}, V2={_TELEMETRY_SIZE})")
+
+    if len(payload) >= _TELEMETRY_SIZE:
+        # --- V2 ---
+        try:
+            d = struct.unpack(FORMAT_TELEMETRY_V2, payload[:_TELEMETRY_SIZE])
+        except struct.error as e:
+            _log_message(topic, client_id, True, f"SYS V2 chyba rozbalení: {e}")
+            get_logger().error("SYS V2 rozbalení selhalo [%s / %s]: %s", topic, client_id, e)
+            return
+        # 0=header,1=ver_maj,2=ver_min,3=hw_maj,4=hw_min,5=sw_maj,6=sw_min,
+        # 7=timestamp,8=reserve,9=pkt_cnt,10=batt_mv,11=temp*1000,12=hum*1000,
+        # 13=pres*1000,14=IMEI,15=DEV_ID,16=train_cnt,17=pwr_cycle,
+        # 18=uptime_min,19=last_pwr_ts,20=status_bits,21=rssi,22=rsrp,
+        # 23=rsrq,24=snr,25=modem_word,26=gps_lat,27=gps_lon,28=gps_alt,29=CRC
+        podminka = {
+            "device_id":       device_id,
+            "temperature":     round(d[11] / 1000.0, 2),
+            "humidity":        round(d[12] / 1000.0, 2),
+            "pressure":        round(d[13] / 1000.0, 1),
+            "batt_mv":         d[10],
+            "signal_strength": d[21],
+            "uptime_minutes":  d[18],
+            "train_counter":   data_funkce.dej_pocet_zprav_zarizeni(device_id),
+        }
+        ver = f"V2 ({d[1]}.{d[2]})"
+
+    elif len(payload) >= _TELEMETRY_V1_SIZE:
+        # --- V1 ---
+        try:
+            d = struct.unpack(FORMAT_TELEMETRY_V1, payload[:_TELEMETRY_V1_SIZE])
+        except struct.error as e:
+            _log_message(topic, client_id, True, f"SYS V1 chyba rozbalení: {e}")
+            get_logger().error("SYS V1 rozbalení selhalo [%s / %s]: %s", topic, client_id, e)
+            return
+        # 0=header,1=ver_maj,2=ver_min,3=timestamp,4=reserve,5=pkt_cnt,
+        # 6=batt_mv,7=temp*1000,8=hum*1000,9=pres*1000,10=IMEI,11=DEV_ID,
+        # 12=train_cnt,13=pwr_cycle,14=uptime_min,15=last_pwr_ts,
+        # 16=status_bits,17=rssi,18=rsrp,19=rsrq,20=snr,21=modem_word,
+        # 22=gps_lat,23=gps_lon,24=gps_alt,25=CRC
+        podminka = {
+            "device_id":       device_id,
+            "temperature":     round(d[7] / 1000.0, 2),
+            "humidity":        round(d[8] / 1000.0, 2),
+            "pressure":        round(d[9] / 1000.0, 1),
+            "batt_mv":         d[6],
+            "signal_strength": d[17],
+            "uptime_minutes":  d[14],
+            "train_counter":   data_funkce.dej_pocet_zprav_zarizeni(device_id),
+        }
+        ver = f"V1 ({d[1]}.{d[2]})"
+
+    else:
+        _log_message(topic, client_id, True,
+                     f"SYS neznámý formát ({len(payload)} B, min V1={_TELEMETRY_V1_SIZE} B) — hex: {payload[:16].hex()}")
         return
 
-    try:
-        d = struct.unpack(FORMAT_TELEMETRY_V2, payload[:_TELEMETRY_SIZE])
-    except struct.error as e:
-        _log_message(topic, client_id, True, f"SYS chyba rozbalení: {e}")
-        return
-
-    # d indexy dle FORMAT_TELEMETRY_V2:
-    # 0=header,1=ver_maj,2=ver_min,3=hw_maj,4=hw_min,5=sw_maj,6=sw_min,
-    # 7=timestamp,8=reserve,9=pkt_cnt,10=batt_mv,11=temp*1000,12=hum*1000,
-    # 13=pres*1000,14=IMEI,15=DEV_ID,16=train_cnt,17=pwr_cycle,
-    # 18=uptime_min,19=last_pwr_ts,20=status_bits,21=rssi,22=rsrp,
-    # 23=rsrq,24=snr,25=modem_word,26=gps_lat,27=gps_lon,28=gps_alt,29=CRC
-    podminka = {
-        "device_id":      device_id,
-        "temperature":    round(d[11] / 1000.0, 2),
-        "humidity":       round(d[12] / 1000.0, 2),
-        "pressure":       round(d[13] / 1000.0, 1),
-        "batt_mv":        d[10],
-        "signal_strength": d[21],
-        "uptime_minutes": d[18],
-        "train_counter":  data_funkce.dej_pocet_zprav_zarizeni(device_id),
-    }
     data_funkce.uloz_podmínky(podminka)
     _log_message(topic, client_id, True,
-                 f"SYS: {podminka['temperature']}°C, {podminka['humidity']}%, "
+                 f"SYS {ver}: {podminka['temperature']}°C, {podminka['humidity']}%, "
                  f"{podminka['batt_mv']} mV, sig {podminka['signal_strength']} dBm")
-    print(f"[MQTT SYS] {topic} → {podminka}")
+    print(f"[MQTT SYS] {topic} ({ver}) → {podminka}")
 
 
 def on_message(client, userdata, msg):
     global packet_buffers
-    global updated_workaround_timestamp
-    global packet_timestamp_workaround
-    global timestamp_str
     global on_msg_call_cntr
 
     on_msg_call_cntr += 1
@@ -133,6 +162,7 @@ def on_message(client, userdata, msg):
         pkt_info = f"paket {packet.actual_packet_nr}/{packet.total_packet_nr}"
     except struct.error as e:
         _log_message(msg.topic, client_id, False, f"chyba rozbalení: {e}")
+        get_logger().error("Rozbalení datového paketu selhalo [%s]: %s", msg.topic, e)
         print(f"[MQTT] Chyba rozbalení paketu z {msg.topic}: {e}")
         return
 
@@ -145,14 +175,17 @@ def on_message(client, userdata, msg):
     _log_message(msg.topic, client_id, True, pkt_info)
     print(f"[MQTT] {msg.topic} → {pkt_info}")
 
-    if updated_workaround_timestamp == 1:
-        packet_timestamp_workaround=int(datetime.now().timestamp())
-        print(f"generating timestamp from local pc -> {packet_timestamp_workaround}")
-        timestamp_str = datetime.fromtimestamp(packet_timestamp_workaround).isoformat()
-        updated_workaround_timestamp=0
+    if packet.actual_packet_nr == 1 or device_id not in _device_session:
+        ts = int(datetime.now().timestamp())
+        device_ts = packet.timestamp if packet.timestamp > 0 else ts
+        _device_session[device_id] = {
+            "ts": ts,
+            "ts_str": datetime.fromtimestamp(ts).isoformat(),
+            "measured_at": datetime.fromtimestamp(device_ts).isoformat(timespec="seconds"),
+        }
+        print(f"[MQTT] Nová sezení pro {device_id}, timestamp={ts}, measured_at={device_ts}")
 
-    key = (device_id, packet_timestamp_workaround)
-    #key = (device_id, packet.timestamp)
+    key = (device_id, _device_session[device_id]["ts"])
     
     # 📦 místo listu použij slovník s číslem paketu jako klíč
     if key not in packet_buffers:
@@ -174,12 +207,14 @@ def on_message(client, userdata, msg):
 
         base_path = f"data_storage/{device_id}"
         os.makedirs(base_path, exist_ok=True)
-        filename = f"{base_path}/{timestamp_str.replace(':', '-')}.bin"
+        ts_str = _device_session[device_id]["ts_str"]
+        filename = f"{base_path}/{ts_str.replace(':', '-')}.bin"
         with open(filename, "wb") as f:
             f.write(bin_data)
 
         # zápis do databáze
-        message_id = data_funkce.uloz_zpravu(device_id, msg.topic, packet.total_packet_nr, filename)
+        measured_at = _device_session[device_id]["measured_at"]
+        message_id = data_funkce.uloz_zpravu(device_id, msg.topic, packet.total_packet_nr, filename, measured_at)
 
         print(f"Complete message saved to {filename}")
 
@@ -190,13 +225,13 @@ def on_message(client, userdata, msg):
                 data_funkce.uloz_klasifikaci(message_id, result)
             print(f"[MQTT] Klasifikace: {result['typ_vlaku']}, rychlost {result['rychlost_kmh']} km/h, poškození {result['poskozeni_podvozku']}")
         except Exception as e:
+            get_logger().error("Klasifikace selhala [msg_id=%s, file=%s]:\n%s", message_id, filename, traceback.format_exc())
             print(f"[MQTT] Chyba klasifikace: {e}")
 
         # cleanup
-        updated_workaround_timestamp=1
-        print("enable future timestamp workaroud update")
         del packet_buffers[key]
         buffer_timestamps.pop(key, None)
+        _device_session.pop(device_id, None)
 
 
     

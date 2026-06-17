@@ -2,6 +2,7 @@
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 import os
+from nastaveni import APP_VERSION
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -26,5 +27,6 @@ def template_context(request: Request, current_user=None, **kwargs):
     return {
         "current_user": current_user,
         "flashed_messages": get_flashed_messages(request),
+        "app_version": APP_VERSION,
         **kwargs,
     }

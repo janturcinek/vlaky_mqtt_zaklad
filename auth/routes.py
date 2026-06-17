@@ -75,7 +75,7 @@ async def users_get(request: Request, current_user: User = Depends(ma_roli("admi
     user_list = data_funkce.seznam_uzivatelu()
     return templates.TemplateResponse(
         request, "users.html",
-        context=template_context(request, current_user=current_user, users=user_list, labels=load_labels(lang="eng"))
+        context=template_context(request, current_user=current_user, users=user_list, labels=load_labels(lang="cz"))
     )
 
 

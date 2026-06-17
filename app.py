@@ -3,22 +3,39 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.requests import Request
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 import threading
 import sqlite3
+import traceback
 
 from mqtt_receiver import run_mqtt_receiver
 from nastaveni import DevelopmentConfig
 from auth.routes import auth_router
 from auth.devices import device_router
+from auth.admin import admin_router
 from decorators import NotAuthenticatedException, NotAuthorizedException
 from werkzeug.security import generate_password_hash
-from instance.data_funkce import ensure_classification_columns, ensure_conditions_table, ensure_device_access_table, ensure_train_types_table
+from instance.data_funkce import init_db
+from app_logger import get_logger
+
+
+class _ErrorLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+        except Exception:
+            get_logger().error(
+                "Neošetřená výjimka [%s %s]:\n%s",
+                request.method, request.url, traceback.format_exc(),
+            )
+            raise
 
 
 def create_app() -> FastAPI:
     app = FastAPI()
 
     app.add_middleware(SessionMiddleware, secret_key=DevelopmentConfig.SECRET_KEY)
+    app.add_middleware(_ErrorLoggingMiddleware)
 
     import os
     static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -26,6 +43,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(device_router)
+    app.include_router(admin_router)
 
     # Handlery pro přesměrování při chybách autentizace
     @app.exception_handler(NotAuthenticatedException)
@@ -82,10 +100,7 @@ def create_app() -> FastAPI:
     mqtt_thread = threading.Thread(target=run_mqtt_receiver, daemon=True)
     mqtt_thread.start()
 
-    ensure_classification_columns()
-    ensure_conditions_table()
-    ensure_device_access_table()
-    ensure_train_types_table()
+    init_db()
 
     return app
 

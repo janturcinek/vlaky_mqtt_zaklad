@@ -21,7 +21,7 @@
 "prijmeni":{"cz":"Příjmení", "eng":"Surname"},
 "role_uzivatele":{"cz":"Role uživatele", "eng":"User role"},
 "sprava": {"cz":"Správa", "eng":"Manage"},
-"seznam_uzivatelu": {"cz":"Seznam uživateků", "eng":"List of users"},
+"seznam_uzivatelu": {"cz":"Seznam uživatelů", "eng":"List of users"},
 "seznam_zarizeni": {"cz":"Seznam zařízení", "eng":"List of devices"},
 "seznam_zprav": {"cz":"Seznam zpráv", "eng":"List of messages"},
 "sprava_zarizeni": {"cz":"Správa zařízení", "eng":"Device management"},

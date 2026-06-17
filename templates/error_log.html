@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Chybový log</h1>
+    <p class="page-subtitle">Soubor: <code class="code-inline">{{ log_file }}</code></p>
+</div>
+
+<div class="error-log-toolbar">
+    {% if log_entries %}
+    <span class="error-log-count">{{ log_entries|length }} záznam{{ 'ů' if log_entries|length > 4 else ('y' if log_entries|length > 1 else '') }}</span>
+    <form method="post" action="/auth/admin/error-log/clear"
+          onsubmit="return confirm('Opravdu smazat celý chybový log?')">
+        <button type="submit" class="btn btn-sm btn-outline-danger">Vymazat log</button>
+    </form>
+    {% else %}
+    <span class="error-log-empty-msg">Log je prázdný — žádné chyby nebyly zaznamenány.</span>
+    {% endif %}
+</div>
+
+{% if log_entries %}
+<div class="data-card scrollable">
+    <table class="error-log-table">
+        <thead>
+            <tr>
+                <th class="elt-col-ts">Čas</th>
+                <th class="elt-col-level">Úroveň</th>
+                <th class="elt-col-src">Zdroj</th>
+                <th class="elt-col-msg">Zpráva</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in log_entries %}
+            <tr class="elt-row elt-row-{{ e.level | lower }}">
+                <td class="elt-ts td-nowrap td-mono">{{ e.ts }}</td>
+                <td class="elt-level">
+                    <span class="elt-badge elt-badge-{{ e.level | lower }}">{{ e.level }}</span>
+                </td>
+                <td class="elt-src td-mono td-nowrap">{{ e.source }}</td>
+                <td class="elt-msg">
+                    {{ e.message }}
+                    {% if e.traceback %}
+                    <details class="elt-details">
+                        <summary>Traceback</summary>
+                        <pre class="elt-pre">{{ e.traceback }}</pre>
+                    </details>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}

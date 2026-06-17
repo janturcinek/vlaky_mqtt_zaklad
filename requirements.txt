@@ -1,18 +1,18 @@
 # Web framework
-fastapi
-uvicorn[standard]
-python-multipart
+fastapi==0.136.1
+uvicorn[standard]==0.47.0
+python-multipart==0.0.29
 
 # Templating & sessions
-jinja2
-itsdangerous
+jinja2==3.1.6
+itsdangerous==2.2.0
 
 # Password hashing
-werkzeug
+Werkzeug==3.1.8
 
 # MQTT
-paho-mqtt
+paho-mqtt==2.1.0
 
 # Data processing
-numpy
-scipy
+numpy==2.4.6
+scipy==1.17.1

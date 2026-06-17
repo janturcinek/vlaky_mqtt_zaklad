@@ -14,7 +14,7 @@
     </div>
     <div>
         <label></label>
-        <small style="color:var(--gray-mid);font-size:.82em;">Prostřední část topicu: <code>NRF/<strong id="topic-preview-val">KK</strong>/UP_STREAM</code></small>
+        <small class="topic-hint">Prostřední část topicu: <code>NRF/<strong id="topic-preview-val">KK</strong>/UP_STREAM</code></small>
     </div>
     <div>
         <label for="poloha">{{ labels["poloha"] }} (umístění):</label>
@@ -36,9 +36,9 @@
     inp.addEventListener('input', () => { prev.textContent = inp.value.trim() || '…'; });
 </script>
 
-<h2 style="font-size:1.15rem;font-weight:700;margin-bottom:14px;">{{ labels["seznam_zarizeni"] }}</h2>
+<h2 class="list-heading">{{ labels["seznam_zarizeni"] }}</h2>
 <div class="data-card">
-    <table class="table" style="width:100%;border-collapse:collapse;margin:0;">
+    <table class="table">
         <thead>
             <tr>
                 <th>MQTT Client ID</th>
@@ -52,7 +52,7 @@
         <tbody>
         {% for dev in devices %}
         <tr>
-            <td><code style="background:var(--gray-bg);padding:2px 7px;border-radius:4px;font-size:.88rem;">{{ dev[1] }}</code></td>
+            <td><code class="code-inline">{{ dev[1] }}</code></td>
             <td>{{ dev[2] }}</td>
             <td class="ts-cell">{{ dev[3] }}</td>
             <td>{{ dev[4] }} {{ dev[5] }}</td>

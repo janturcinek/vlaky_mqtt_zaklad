@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    image: prujezdy-vlaku:latest
+    container_name: prujezdy-vlaku
+    ports:
+      - "127.0.0.1:5000:8000"
+    volumes:
+      - vlaky_db:/app/db
+      - vlaky_data:/app/data_storage
+    environment:
+      # Změňte SECRET_KEY na náhodný řetězec v produkci!
+      - SECRET_KEY=změňte_mě_na_tajný_řetězec_min_32_znaků
+      - TZ=Europe/Prague
+    restart: unless-stopped
+
+volumes:
+  vlaky_db:
+    name: vlaky_db
+  vlaky_data:
+    name: vlaky_data

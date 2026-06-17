@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from werkzeug.security import generate_password_hash,check_password_hash
 from nastaveni import WAVE_SAMPLE_LEN, DevelopmentConfig
@@ -5,9 +6,142 @@ from datetime import datetime
 
 def get_db_connection():
     """Vytvoří připojení k databázi"""
+    os.makedirs(os.path.dirname(DevelopmentConfig.DATABASE), exist_ok=True)
     conn = sqlite3.connect(DevelopmentConfig.DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def init_db():
+    """
+    Inicializuje databázi při startu aplikace.
+    Vytvoří všechny tabulky (pokud neexistují) a seeduje základní data.
+    Bezpečné volat opakovaně – neničí existující data.
+    """
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    c.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            name     TEXT NOT NULL,
+            surname  TEXT,
+            login    TEXT UNIQUE,
+            created  TEXT DEFAULT (CURRENT_TIMESTAMP)
+        );
+
+        CREATE TABLE IF NOT EXISTS user_passwords (
+            pass_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id  INTEGER REFERENCES users(user_id) NOT NULL,
+            password NOT NULL,
+            created  TEXT DEFAULT (CURRENT_TIMESTAMP)
+        );
+
+        CREATE TABLE IF NOT EXISTS system_roles (
+            role_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            name        NOT NULL,
+            description TEXT,
+            sysid       TEXT UNIQUE NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS user_roles (
+            user_role_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER REFERENCES users(user_id),
+            role_id      INTEGER REFERENCES system_roles(role_id),
+            assigned     TEXT DEFAULT (CURRENT_TIMESTAMP),
+            removed      TEXT,
+            responsible  INTEGER REFERENCES users(user_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS devices (
+            device_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_id  TEXT UNIQUE NOT NULL,
+            assigned   TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+            user_id    INTEGER REFERENCES users(user_id),
+            location   TEXT,
+            description TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS messages (
+            message_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id       INTEGER REFERENCES devices(device_id) NOT NULL,
+            assigned        TEXT DEFAULT (CURRENT_TIMESTAMP),
+            measured_at     TEXT,
+            topic           TEXT,
+            packets         INTEGER,
+            filename        TEXT UNIQUE,
+            train_type      TEXT,
+            speed_kmh       REAL,
+            damage_detected INTEGER,
+            classified_at   TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS mqtt_packets (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_id     TEXT,
+            topic         TEXT,
+            timestamp     TEXT,
+            packet_nr     INTEGER,
+            total_packets INTEGER,
+            created_at    TEXT DEFAULT (CURRENT_TIMESTAMP)
+        );
+
+        CREATE TABLE IF NOT EXISTS device_conditions (
+            condition_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id       INTEGER NOT NULL,
+            received_at     TEXT NOT NULL,
+            temperature     REAL,
+            humidity        REAL,
+            pressure        REAL,
+            batt_mv         INTEGER,
+            signal_strength INTEGER,
+            uptime_minutes  INTEGER,
+            train_counter   INTEGER,
+            FOREIGN KEY (device_id) REFERENCES devices(device_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS device_access (
+            access_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id INTEGER NOT NULL,
+            user_id   INTEGER NOT NULL,
+            can_edit  INTEGER NOT NULL DEFAULT 0,
+            assigned  TEXT DEFAULT (datetime('now','localtime')),
+            UNIQUE(device_id, user_id),
+            FOREIGN KEY (device_id) REFERENCES devices(device_id),
+            FOREIGN KEY (user_id)   REFERENCES users(user_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS train_types (
+            train_type_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            typ           TEXT NOT NULL UNIQUE,
+            pomer         REAL NOT NULL,
+            dvojkoli_mm   INTEGER NOT NULL,
+            popis         TEXT DEFAULT '',
+            created       TEXT DEFAULT (datetime('now','localtime'))
+        );
+    """)
+
+    # Seed: systémové role
+    c.execute("INSERT OR IGNORE INTO system_roles (name, sysid) VALUES ('Admin', 'admin')")
+    c.execute("INSERT OR IGNORE INTO system_roles (name, sysid) VALUES ('User',  'user')")
+
+    # Seed: typy vlaků
+    for t in _TRAIN_DB_SEED:
+        c.execute(
+            "INSERT OR IGNORE INTO train_types (typ, pomer, dvojkoli_mm, popis) VALUES (?, ?, ?, ?)",
+            (t["typ"], t["pomer"], t["dvojkoli_mm"], t["popis"])
+        )
+
+    # Migrace: přidej measured_at do existujících DB
+    c.execute("PRAGMA table_info(messages)")
+    existing_cols = {row[1] for row in c.fetchall()}
+    if "measured_at" not in existing_cols:
+        c.execute("ALTER TABLE messages ADD COLUMN measured_at TEXT")
+
+    conn.commit()
+    conn.close()
+    print("[DB] init_db() dokončen")
+
 
 def is_user(login):
     conn = get_db_connection()
@@ -354,14 +488,14 @@ def posledni_zprava():
     conn.close()
     return result
 
-def uloz_zpravu(device_id, topic, total_packets, filename):
+def uloz_zpravu(device_id, topic, total_packets, filename, measured_at=None):
     conn = get_db_connection()
     c = conn.cursor()
     message_id = None
     try:
         c.execute(
-            "INSERT INTO messages (device_id, topic, packets, filename) VALUES (?, ?, ?, ?)",
-            (device_id, topic, total_packets, filename)
+            "INSERT INTO messages (device_id, topic, packets, filename, measured_at) VALUES (?, ?, ?, ?, ?)",
+            (device_id, topic, total_packets, filename, measured_at)
         )
         conn.commit()
         message_id = c.lastrowid
@@ -414,7 +548,7 @@ def dej_prehled_zarizeni():
             d.description,
             (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id) AS total_trains,
             (SELECT COUNT(*) FROM messages m WHERE m.device_id = d.device_id
-               AND m.assigned >= datetime('now', '-7 days')) AS trains_week,
+               AND COALESCE(m.measured_at, m.assigned) >= datetime('now', '-7 days')) AS trains_week,
             (SELECT m.assigned FROM messages m WHERE m.device_id = d.device_id
                ORDER BY m.message_id DESC LIMIT 1) AS last_train_time,
             (SELECT dc.temperature FROM device_conditions dc WHERE dc.device_id = d.device_id
@@ -658,7 +792,7 @@ def dej_prehled_pro_uzivatele(user_id: int, is_admin: bool):
     conn = get_db_connection()
     c = conn.cursor()
     if is_admin:
-        c.execute(_PREHLED_SELECT + " ORDER BY d.assigned DESC")
+        c.execute(_PREHLED_SELECT + " ORDER BY CAST(d.client_id AS INTEGER), d.client_id")
     else:
         c.execute(
             _PREHLED_SELECT +
@@ -666,7 +800,7 @@ def dej_prehled_pro_uzivatele(user_id: int, is_admin: bool):
             "   SELECT device_id FROM devices WHERE user_id = ?"
             "   UNION"
             "   SELECT device_id FROM device_access WHERE user_id = ?"
-            " ) ORDER BY d.assigned DESC",
+            " ) ORDER BY CAST(d.client_id AS INTEGER), d.client_id",
             (int(user_id), int(user_id))
         )
     rows = c.fetchall()
@@ -679,11 +813,11 @@ def dej_seznam_zprav(id):
     c = conn.cursor()
     c.execute("""
               SELECT message_id, messages.assigned, packets, filename,
-                     train_type, speed_kmh, damage_detected
+                     train_type, speed_kmh, damage_detected, measured_at
               FROM messages
               JOIN devices ON messages.device_id = devices.device_id
               WHERE messages.device_id = ?
-              ORDER BY messages.assigned DESC""", (int(id),))
+              ORDER BY COALESCE(measured_at, messages.assigned) DESC""", (int(id),))
     rows = c.fetchall()
     conn.close()
     return [
@@ -695,6 +829,7 @@ def dej_seznam_zprav(id):
             "train_type": r[4],
             "speed_kmh": r[5],
             "damage_detected": r[6],
+            "measured_at": r[7],
         }
         for r in rows
     ]
@@ -709,23 +844,32 @@ def dej_zprava_filename(message_id):
     return row[0] if row else None
 
 
-def uloz_klasifikaci(message_id, train_type, speed_kmh, damage_detected):
-    from datetime import datetime
+def dej_zprava_info(message_id: int):
+    """Vrátí device_id a filename záznamu, nebo None."""
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("""
-        UPDATE messages
-        SET train_type = ?, speed_kmh = ?, damage_detected = ?, classified_at = ?
-        WHERE message_id = ?
-    """, (
-        train_type,
-        speed_kmh,
-        1 if damage_detected else 0,
-        datetime.now().isoformat(),
-        int(message_id),
-    ))
+    c.execute("SELECT device_id, filename FROM messages WHERE message_id = ?", (int(message_id),))
+    row = c.fetchone()
+    conn.close()
+    return {"device_id": row[0], "filename": row[1]} if row else None
+
+
+def smaz_zpravu(message_id: int) -> str | None:
+    """Smaže záznam z DB a vrátí cestu k bin souboru (nebo None pokud neexistoval)."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT filename FROM messages WHERE message_id = ?", (int(message_id),))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return None
+    filename = row[0]
+    c.execute("DELETE FROM messages WHERE message_id = ?", (int(message_id),))
     conn.commit()
     conn.close()
+    return filename
+
+
 
 
 def ensure_classification_columns():

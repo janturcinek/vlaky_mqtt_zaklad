@@ -23,7 +23,7 @@
             </form>
 
             {% if flashed_messages %}
-                <div class="flash-list" style="margin-top:20px">
+                <div class="flash-list">
                     {% for category, message in flashed_messages %}
                         <div class="flash-item {{ category }}">{{ message }}</div>
                     {% endfor %}

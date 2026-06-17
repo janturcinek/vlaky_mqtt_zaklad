@@ -16,7 +16,7 @@
 {% if current_user %}
     {# ── Top bar ── #}
     <div class="topbar">
-        <span class="topbar-brand">Průjezdy vlaků</span>
+        <span class="topbar-brand">Průjezdy vlaků <span class="topbar-version">v{{ app_version }}</span></span>
         <div class="topbar-user">
             <span class="topbar-name">{{ current_user.name }} {{ current_user.surname }}</span>
             <button class="topbar-btn" onclick="document.getElementById('change-pw-overlay').style.display='flex'">Změnit heslo</button>
@@ -52,27 +52,27 @@
     </div>
 
     {# ── Modal: změna hesla ── #}
-    <div id="change-pw-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center;">
-        <div style="background:#fff;border-radius:10px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.3);overflow:hidden;">
-            <div style="background:#111;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-weight:600;font-size:.95rem;">Změnit heslo</span>
-                <button onclick="document.getElementById('change-pw-overlay').style.display='none'" style="background:none;border:none;color:#999;font-size:1.2rem;cursor:pointer;line-height:1;">✕</button>
+    <div id="change-pw-overlay" class="pw-modal-overlay">
+        <div class="pw-modal">
+            <div class="pw-modal-header">
+                <span class="pw-modal-title">Změnit heslo</span>
+                <button onclick="document.getElementById('change-pw-overlay').style.display='none'" class="pw-modal-close">✕</button>
             </div>
-            <form method="post" action="/auth/change-password" style="padding:20px;display:flex;flex-direction:column;gap:12px;" onsubmit="return pwCheck(this)">
+            <form method="post" action="/auth/change-password" class="pw-modal-form" onsubmit="return pwCheck(this)">
                 <div>
-                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px;">Stávající heslo</label>
+                    <label class="pw-modal-label">Stávající heslo</label>
                     <input type="password" name="stare_heslo" required class="form-control" placeholder="••••••••">
                 </div>
                 <div>
-                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px;">Nové heslo</label>
+                    <label class="pw-modal-label">Nové heslo</label>
                     <input type="password" name="heslo" id="pw-new" required class="form-control" placeholder="••••••••">
                 </div>
                 <div>
-                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:4px;">Potvrzení nového hesla</label>
+                    <label class="pw-modal-label">Potvrzení nového hesla</label>
                     <input type="password" name="heslo2" id="pw-confirm" required class="form-control" placeholder="••••••••">
                 </div>
-                <div id="pw-err" style="display:none;color:#dc2626;font-size:.82rem;"></div>
-                <button type="submit" class="btn btn-primary" style="margin-top:4px;">Uložit heslo</button>
+                <div id="pw-err" class="pw-err"></div>
+                <button type="submit" class="btn btn-primary">Uložit heslo</button>
             </form>
         </div>
     </div>
@@ -93,5 +93,45 @@
 {% else %}
     </main>
 {% endif %}
+<script>
+function _parseTs(raw) {
+    if (!raw) return null;
+    const s = raw.trim().replace(' ', 'T');
+    return s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+}
+// Tabulkový formát: datum na řádku 1, čas na řádku 2
+function formatTsCell(raw) {
+    const m = _parseTs(raw);
+    if (!m) return null;
+    const time = m[4] + ':' + m[5] + (m[6] ? ':' + m[6] : '');
+    return '<span class="ts-date">' + m[3] + '. ' + m[2] + '. ' + m[1] + '</span>'
+         + '<br><span class="ts-time">' + time + '</span>';
+}
+// Inline formát: čitelný jednořádkový text
+function formatTsFmt(raw) {
+    const m = _parseTs(raw);
+    if (!m) return null;
+    const time = m[4] + ':' + m[5] + (m[6] ? ':' + m[6] : '');
+    return m[3] + '. ' + parseInt(m[2]) + '. ' + m[1] + ', ' + time;
+}
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.ts-cell').forEach(function (el) {
+        const html = formatTsCell(el.textContent.trim());
+        if (html) el.innerHTML = html;
+        const title = el.getAttribute('title');
+        if (title) {
+            const tm = title.match(/\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/);
+            if (tm) {
+                const fmt = formatTsFmt(tm[0]);
+                if (fmt) el.setAttribute('title', title.replace(tm[0], fmt));
+            }
+        }
+    });
+    document.querySelectorAll('.ts-fmt').forEach(function (el) {
+        const fmt = formatTsFmt(el.textContent.trim());
+        if (fmt) el.textContent = fmt;
+    });
+});
+</script>
 </body>
 </html>

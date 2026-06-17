@@ -17,17 +17,17 @@
 
 {# ── Aktuální podmínky ── #}
 {% if posledni_podmínky %}
-<div style="margin-bottom:28px;">
-    <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:12px;">Aktuální podmínky
-        <span style="font-size:.78rem;font-weight:400;color:var(--gray-mid);margin-left:8px;">{{ posledni_podmínky.received_at }}</span>
+<div class="conditions-section">
+    <h2 class="section-h2">Aktuální podmínky
+        <span class="ts-fmt conditions-ts">{{ posledni_podmínky.received_at }}</span>
     </h2>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div class="stat-cards-row">
         <div class="stat-card"><div class="stat-label">Teplota</div><div class="stat-value">{{ posledni_podmínky.temperature }} °C</div></div>
         <div class="stat-card"><div class="stat-label">Vlhkost</div><div class="stat-value">{{ posledni_podmínky.humidity }} %</div></div>
-        <div class="stat-card"><div class="stat-label">Tlak</div><div class="stat-value" style="font-size:1.1rem;">{{ posledni_podmínky.pressure }} Pa</div></div>
-        <div class="stat-card"><div class="stat-label">Baterie</div><div class="stat-value" style="font-size:1.1rem;">{{ posledni_podmínky.batt_mv }} mV</div></div>
-        <div class="stat-card"><div class="stat-label">Signál</div><div class="stat-value" style="font-size:1.1rem;">{{ posledni_podmínky.signal_strength }} dBm</div></div>
-        <div class="stat-card"><div class="stat-label">Uptime</div><div class="stat-value" style="font-size:1.1rem;">{{ posledni_podmínky.uptime_minutes }} min</div></div>
+        <div class="stat-card"><div class="stat-label">Tlak</div><div class="stat-value stat-value-small">{{ posledni_podmínky.pressure }} Pa</div></div>
+        <div class="stat-card"><div class="stat-label">Baterie</div><div class="stat-value stat-value-small">{{ posledni_podmínky.batt_mv }} mV</div></div>
+        <div class="stat-card"><div class="stat-label">Signál</div><div class="stat-value stat-value-small">{{ posledni_podmínky.signal_strength }} dBm</div></div>
+        <div class="stat-card"><div class="stat-label">Uptime</div><div class="stat-value stat-value-small">{{ posledni_podmínky.uptime_minutes }} min</div></div>
         <div class="stat-card"><div class="stat-label">Počítadlo vlaků</div><div class="stat-value">{{ posledni_podmínky.train_counter }}</div></div>
     </div>
 </div>
@@ -35,30 +35,30 @@
 
 {# ── Historie podmínek ── #}
 {% if historie_podmínek %}
-<h2 style="font-size:1.1rem;font-weight:700;margin-bottom:12px;">Historie podmínek</h2>
-<div class="data-card" style="margin-bottom:28px;max-height:260px;overflow-y:auto;">
-    <table style="width:100%;border-collapse:collapse;">
+<h2 class="section-h2">Historie podmínek</h2>
+<div class="data-card compact history-card">
+    <table>
         <thead>
             <tr>
-                <th style="background:var(--black);color:var(--white);padding:8px 14px;font-size:.82rem;">Čas</th>
-                <th style="background:var(--black);color:var(--white);padding:8px 14px;font-size:.82rem;">Teplota (°C)</th>
-                <th style="background:var(--black);color:var(--white);padding:8px 14px;font-size:.82rem;">Vlhkost (%)</th>
-                <th style="background:var(--black);color:var(--white);padding:8px 14px;font-size:.82rem;">Tlak (Pa)</th>
-                <th style="background:var(--black);color:var(--white);padding:8px 14px;font-size:.82rem;">Baterie (mV)</th>
-                <th style="background:var(--black);color:var(--white);padding:8px 14px;font-size:.82rem;">Signál (dBm)</th>
-                <th style="background:var(--black);color:var(--white);padding:8px 14px;font-size:.82rem;">Vlaky</th>
+                <th>Čas</th>
+                <th>Teplota (°C)</th>
+                <th>Vlhkost (%)</th>
+                <th>Tlak (Pa)</th>
+                <th>Baterie (mV)</th>
+                <th>Signál (dBm)</th>
+                <th>Vlaky</th>
             </tr>
         </thead>
         <tbody>
         {% for h in historie_podmínek %}
-        <tr style="border-bottom:1px solid var(--gray-light);">
-            <td class="ts-cell" style="padding:7px 14px;">{{ h.received_at }}</td>
-            <td style="padding:7px 14px;">{{ h.temperature }}</td>
-            <td style="padding:7px 14px;">{{ h.humidity }}</td>
-            <td style="padding:7px 14px;">{{ h.pressure }}</td>
-            <td style="padding:7px 14px;">{{ h.batt_mv }}</td>
-            <td style="padding:7px 14px;">{{ h.signal_strength }}</td>
-            <td style="padding:7px 14px;">{{ h.train_counter }}</td>
+        <tr>
+            <td class="ts-cell">{{ h.received_at }}</td>
+            <td>{{ h.temperature }}</td>
+            <td>{{ h.humidity }}</td>
+            <td>{{ h.pressure }}</td>
+            <td>{{ h.batt_mv }}</td>
+            <td>{{ h.signal_strength }}</td>
+            <td>{{ h.train_counter }}</td>
         </tr>
         {% endfor %}
         </tbody>
@@ -84,7 +84,9 @@
             <tbody>
                 {% for msg in zpravy %}
                 <tr id="row-{{ msg.message_id }}">
-                    <td class="ts-cell">{{ msg.assigned }}</td>
+                    <td class="ts-cell" title="doručeno: {{ msg.assigned }}">
+                        {{ msg.measured_at or msg.assigned }}
+                    </td>
                     <td>{{ msg.packets }}</td>
                     <td id="type-{{ msg.message_id }}">
                         {% if msg.train_type %}
@@ -113,10 +115,18 @@
                     </td>
                     <td class="action-cell">
                         <button class="btn btn-sm btn-outline-primary"
-                                onclick="showChart({{ msg.message_id }})">Graf</button>
+                                onclick="showChart({{ msg.message_id }}, false)">Grafy po zpracování</button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                                onclick="showChart({{ msg.message_id }}, true)">Grafy — raw data</button>
                         <button class="btn btn-sm btn-secondary"
                                 id="btn-{{ msg.message_id }}"
-                                onclick="classify({{ msg.message_id }})">Klasifikovat</button>
+                                onclick="classify({{ msg.message_id }})">
+                            {{ "Reklasifikovat" if msg.train_type else "Klasifikovat" }}
+                        </button>
+                        {% if muze_edit %}
+                        <button class="btn btn-sm btn-outline-danger"
+                                onclick="deleteRecord({{ msg.message_id }})">Smazat</button>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -135,18 +145,18 @@
     <div class="chart-modal">
         <div class="chart-modal-header">
             <h3 id="chart-title">Průběh signálu</h3>
-            <div style="display:flex;gap:8px;align-items:center;">
+            <div class="chart-modal-controls">
                 <button class="btn btn-sm btn-outline-secondary" onclick="resetZoom()" title="Obnovit pohled">↺ Reset zoom</button>
                 <button class="btn-close-modal" onclick="closeChart()">✕</button>
             </div>
         </div>
-        <div id="chart-info" class="chart-info" style="display:none;"></div>
-        <div id="chart-hint" style="font-size:.76rem;color:var(--gray-mid);padding:4px 0 0 2px;">
+        <div id="chart-info" class="chart-info"></div>
+        <div id="chart-hint" class="chart-hint">
             Kolečko myši = zoom · Táhnutí = posun · Klik na legendu = skrýt/zobrazit kanál
         </div>
         <div id="chart-loading" class="chart-loading">Načítám data…</div>
         <div class="chart-canvas-wrap">
-            <canvas id="signal-chart" style="display:none;"></canvas>
+            <canvas id="signal-chart"></canvas>
         </div>
     </div>
 </div>
@@ -158,7 +168,7 @@ function resetZoom() {
     if (signalChart) signalChart.resetZoom();
 }
 
-async function showChart(msgId) {
+async function showChart(msgId, raw) {
     const overlay = document.getElementById('chart-overlay');
     const loading = document.getElementById('chart-loading');
     const canvas  = document.getElementById('signal-chart');
@@ -169,12 +179,13 @@ async function showChart(msgId) {
     loading.textContent   = 'Načítám data…';
     canvas.style.display  = 'none';
     info.style.display    = 'none';
-    document.getElementById('chart-title').textContent = 'Průběh signálu — zpráva #' + msgId;
+    document.getElementById('chart-title').textContent =
+        (raw ? 'Raw data' : 'Grafy po zpracování') + ' — zpráva #' + msgId;
 
     if (signalChart) { signalChart.destroy(); signalChart = null; }
 
     try {
-        const resp = await fetch('/auth/api/message/' + msgId + '/waveform');
+        const resp = await fetch('/auth/api/message/' + msgId + '/waveform' + (raw ? '?raw=true' : ''));
         const data = await resp.json();
 
         if (data.error) {
@@ -182,7 +193,7 @@ async function showChart(msgId) {
             return;
         }
 
-        if (data.peaks && data.peaks.length > 0) {
+        if (!raw && data.peaks && data.peaks.length > 0) {
             info.style.display = 'block';
             info.textContent   = 'Detekováno vrcholů: ' + data.peaks.length;
         }
@@ -191,20 +202,7 @@ async function showChart(msgId) {
         canvas.style.display  = 'block';
 
         const t = data.time;
-
-        // Pomocná funkce: převede pole hodnot na {x,y} body
         const xy = (arr) => t.map((v, i) => ({ x: v, y: arr[i] }));
-
-        // Scatter body pro vrcholy – mapujeme na hodnoty ch0_int
-        const peakPoints = data.peaks.map(pt => {
-            let nearest = 0;
-            let minDiff = Infinity;
-            for (let i = 0; i < t.length; i++) {
-                const d = Math.abs(t[i] - pt);
-                if (d < minDiff) { minDiff = d; nearest = i; }
-            }
-            return { x: pt, y: data.ch0_int[nearest] };
-        });
 
         const datasets = [
             {
@@ -226,7 +224,7 @@ async function showChart(msgId) {
                 tension: 0,
                 fill: false,
                 order: 3,
-                hidden: true,
+                hidden: !raw,
             },
             {
                 label: 'ch1_int (proud K1)',
@@ -237,7 +235,7 @@ async function showChart(msgId) {
                 tension: 0,
                 fill: false,
                 order: 4,
-                hidden: true,
+                hidden: !raw,
             },
             {
                 label: 'ch1_vlt (napětí K1)',
@@ -248,9 +246,20 @@ async function showChart(msgId) {
                 tension: 0,
                 fill: false,
                 order: 5,
-                hidden: true,
+                hidden: !raw,
             },
-            {
+        ];
+
+        if (!raw && data.peaks && data.peaks.length > 0) {
+            const peakPoints = data.peaks.map(pt => {
+                let nearest = 0, minDiff = Infinity;
+                for (let i = 0; i < t.length; i++) {
+                    const d = Math.abs(t[i] - pt);
+                    if (d < minDiff) { minDiff = d; nearest = i; }
+                }
+                return { x: pt, y: data.ch0_int[nearest] };
+            });
+            datasets.push({
                 label: 'Detekované vrcholy',
                 data: peakPoints,
                 type: 'scatter',
@@ -259,8 +268,8 @@ async function showChart(msgId) {
                 pointRadius: 7,
                 pointStyle: 'triangle',
                 order: 1,
-            }
-        ];
+            });
+        }
 
         signalChart = new Chart(canvas, {
             type: 'line',
@@ -273,15 +282,8 @@ async function showChart(msgId) {
                 plugins: {
                     legend: { position: 'top' },
                     zoom: {
-                        zoom: {
-                            wheel: { enabled: true },
-                            pinch: { enabled: true },
-                            mode: 'x',
-                        },
-                        pan: {
-                            enabled: true,
-                            mode: 'x',
-                        },
+                        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                        pan:  { enabled: true, mode: 'x' },
                     },
                 },
                 scales: {
@@ -307,6 +309,19 @@ function overlayClick(event) {
 function closeChart() {
     document.getElementById('chart-overlay').style.display = 'none';
     if (signalChart) { signalChart.destroy(); signalChart = null; }
+}
+
+async function deleteRecord(msgId) {
+    if (!confirm('Smazat záznam průjezdu #' + msgId + '?\nTuto akci nelze vrátit.')) return;
+    try {
+        const resp = await fetch('/auth/api/message/' + msgId, { method: 'DELETE' });
+        const data = await resp.json();
+        if (data.error) { alert('Chyba: ' + data.error); return; }
+        const row = document.getElementById('row-' + msgId);
+        if (row) row.remove();
+    } catch (e) {
+        alert('Chyba při mazání: ' + e.message);
+    }
 }
 
 async function classify(msgId) {

@@ -121,6 +121,7 @@ async def device_data(id: str, request: Request, current_user: User = Depends(re
 
 @device_router.get("/api/message/{message_id}/waveform")
 async def message_waveform(message_id: int, request: Request,
+                            raw: bool = False,
                             current_user: User = Depends(require_login)):
     filename = data_funkce.dej_zprava_filename(message_id)
     if not filename:
@@ -131,17 +132,44 @@ async def message_waveform(message_id: int, request: Request,
         return JSONResponse({"error": "soubor nenalezen"}, status_code=404)
 
     try:
-        t, ch0_int, ch0_vlt, ch1_int, ch1_vlt, peaks_t = clf.get_waveform_data(filepath)
-        return JSONResponse({
-            "time":    t,
-            "ch0_int": ch0_int,
-            "ch0_vlt": ch0_vlt,
-            "ch1_int": ch1_int,
-            "ch1_vlt": ch1_vlt,
-            "peaks":   peaks_t,
-        })
+        if raw:
+            t, ch0_int, ch0_vlt, ch1_int, ch1_vlt = clf.get_raw_waveform_data(filepath)
+            return JSONResponse({
+                "time":    t,
+                "ch0_int": ch0_int,
+                "ch0_vlt": ch0_vlt,
+                "ch1_int": ch1_int,
+                "ch1_vlt": ch1_vlt,
+                "peaks":   [],
+            })
+        else:
+            t, ch0_int, ch0_vlt, ch1_int, ch1_vlt, peaks_t = clf.get_waveform_data(filepath)
+            return JSONResponse({
+                "time":    t,
+                "ch0_int": ch0_int,
+                "ch0_vlt": ch0_vlt,
+                "ch1_int": ch1_int,
+                "ch1_vlt": ch1_vlt,
+                "peaks":   peaks_t,
+            })
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@device_router.delete("/api/message/{message_id}")
+async def message_delete(message_id: int, request: Request,
+                         current_user: User = Depends(require_login)):
+    info = data_funkce.dej_zprava_info(message_id)
+    if not info:
+        return JSONResponse({"error": "Zpráva nenalezena."}, status_code=404)
+    if not data_funkce.muze_editovat_zarizeni(info["device_id"], current_user.id, current_user.admin):
+        return JSONResponse({"error": "Nedostatečná oprávnění."}, status_code=403)
+    filename = data_funkce.smaz_zpravu(message_id)
+    if filename:
+        filepath = os.path.join(os.getcwd(), filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+    return JSONResponse({"ok": True})
 
 
 @device_router.post("/api/message/{message_id}/classify")
@@ -157,12 +185,7 @@ async def message_classify(message_id: int, request: Request,
 
     try:
         result = clf.classify_bin_file(filepath)
-        data_funkce.uloz_klasifikaci(
-            message_id,
-            result["typ_vlaku"],
-            result["rychlost_kmh"],
-            result["poskozeni_podvozku"],
-        )
+        data_funkce.uloz_klasifikaci(message_id, result)
         return JSONResponse(result)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -183,6 +206,12 @@ async def stats():
 @device_router.get("/api/mqtt-log")
 async def mqtt_log(current_user: User = Depends(require_login)):
     return JSONResponse(list(recent_messages))
+
+
+@device_router.get("/api/dashboard")
+async def dashboard_api(request: Request, current_user: User = Depends(require_login)):
+    prehled = data_funkce.dej_prehled_pro_uzivatele(current_user.id, current_user.admin)
+    return JSONResponse(prehled)
 
 
 # ── Správa typů vlaků ────────────────────────────────────────────────────────

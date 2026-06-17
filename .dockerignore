@@ -1,0 +1,24 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+virt/
+.venv/
+env/
+
+# Database & data (persisted via Docker volumes)
+db/
+data_storage/
+instance/vlaky.db
+
+# Development tools
+*.md
+.git/
+.gitignore
+.vscode/
+
+# Temp / test files
+_*.py
