@@ -4,14 +4,25 @@ Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/).
 
 ---
 
+## [1.8] — 2026-06-17
+
+### Opraveno
+- Čas posledního průjezdu vlaku zobrazován v českém čase místo UTC; `CURRENT_TIMESTAMP` (vždy UTC) nahrazen `COALESCE(measured_at, datetime(assigned, 'localtime'))` ve dvou SQL dotazech v `data_funkce.py`
+
+---
+
 ## [1.7] — 2026-06-17
 
 ### Přidáno
 - Chybový log aplikace: chyby se zapisují do souboru `db/app_error.log` (rotující, max 2 MB × 3 zálohy)
 - Middleware `_ErrorLoggingMiddleware` zachycuje všechny neošetřené HTTP výjimky a loguje je s traceback
 - Logování MQTT chyb: selhání rozbalení paketu, chyby klasifikace
-- Admin stránka `/auth/admin/error-log` — zobrazí posledních 150 záznamů, barevně odlišuje ERROR / WARNING, možnost vymazání logu
+- Admin stránka `/auth/admin/error-log` — zobrazí posledních 150 záznamů v tabulce, barevně odlišuje ERROR / WARNING, možnost vymazání logu
 - Položka „Chybový log" v administrátorském menu
+- Podpora obou formátů SYS telemetrie: **V1** (72 B, bez hw/sw verze) a **V2** (76 B) — rozlišení podle velikosti payloadu, definice `FORMAT_TELEMETRY_V1` přidána do `nastaveni.py`
+- Graf průjezdu rozdělen na dvě tlačítka: **Grafy po zpracování** (bandpass filtr 1–50 Hz, detekované vrcholy, pouze ch0_int viditelný) a **Grafy — raw data** (nefiltrovaná data přímo z ADC, všechny 4 kanály viditelné); nový endpoint parametr `?raw=true`, nová funkce `get_raw_waveform_data()` v `classifier.py`
+- CSS třída `.btn-outline-secondary` pro tlačítko s šedým obrysem
+- Soubor `.gitignore` (vylučuje `__pycache__/`, `db/`, `data_storage/`, `*.zip`)
 
 ---
 

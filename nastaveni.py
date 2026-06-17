@@ -1,6 +1,6 @@
 import os
 
-APP_VERSION = "1.7"
+APP_VERSION = "1.8"
 
 WAVE_SAMPLE_LEN = 1024
 
