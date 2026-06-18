@@ -5,7 +5,7 @@ services:
     image: prujezdy-vlaku:latest
     container_name: prujezdy-vlaku
     ports:
-      - "0.0.0.0:5000:8000"
+      - "127.0.0.1:5000:8000"
     volumes:
       - ./db:/app/db
       - ./data_storage:/app/data_storage
