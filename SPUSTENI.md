@@ -39,9 +39,9 @@ cd /opt/vlaky
 docker compose up -d --build
 ```
 
-Docker automaticky vytvoří dva pojmenované volumes (`vlaky_db` a `vlaky_data`)
-pro databázi a binární soubory průjezdů. Tyto volumes jsou spravovány Dockerem
-a **nejsou závislé na složce s aplikací** — přepsání souborů aplikace je neovlivní.
+Data jsou ukládána do složek `./db/` a `./data_storage/` přímo ve složce projektu
+(bind mounty). Tyto složky **nejsou součástí gitu** a **rebuild je nijak neovlivní** —
+přepsání souborů aplikace je neovlivní, dokud nepřepíšeš samotné složky.
 
 ---
 
@@ -78,11 +78,11 @@ docker compose logs -f
 docker compose stop
 docker compose start
 
-# Smazat kontejner (volumes zůstanou!)
+# Smazat kontejner (data ve složkách zůstanou!)
 docker compose down
 
-# Smazat kontejner I volumes (SMAŽE DATA!)
-docker compose down -v
+# Rebuild a spuštění (data ve složkách zůstanou!)
+docker compose down && docker compose up -d --build
 ```
 
 ---
@@ -91,11 +91,13 @@ docker compose down -v
 
 ```bash
 docker compose down
-# přepiš soubory novou verzí ZIPu (zachovej docker-compose.yml se svým SECRET_KEY)
+# přepiš soubory novou verzí ZIPu
+# POZOR: zachovej složky db/ a data_storage/ — obsahují data!
+# POZOR: zachovej docker-compose.yml se svým SECRET_KEY
 docker compose up -d --build
 ```
 
-Volumes `vlaky_db` a `vlaky_data` přetrvají — data jsou v bezpečí.
+Složky `./db/` a `./data_storage/` jsou na hostitelském disku — přepsání souborů aplikace je neovlivní.
 
 ---
 
@@ -103,16 +105,10 @@ Volumes `vlaky_db` a `vlaky_data` přetrvají — data jsou v bezpečí.
 
 ```bash
 # Záloha databáze
-docker run --rm \
-  -v vlaky_db:/data \
-  -v $(pwd):/backup \
-  alpine tar czf /backup/db_backup_$(date +%Y%m%d).tar.gz -C /data .
+tar czf db_backup_$(date +%Y%m%d).tar.gz db/
 
 # Záloha binárních souborů průjezdů
-docker run --rm \
-  -v vlaky_data:/data \
-  -v $(pwd):/backup \
-  alpine tar czf /backup/data_backup_$(date +%Y%m%d).tar.gz -C /data .
+tar czf data_backup_$(date +%Y%m%d).tar.gz data_storage/
 ```
 
 ---
@@ -120,51 +116,20 @@ docker run --rm \
 ## 8. Obnova dat ze zálohy
 
 ```bash
-# Obnova databáze
-docker run --rm \
-  -v vlaky_db:/data \
-  -v $(pwd):/backup \
-  alpine tar xzf /backup/db_backup_YYYYMMDD.tar.gz -C /data
-
-# Obnova binárních souborů
-docker run --rm \
-  -v vlaky_data:/data \
-  -v $(pwd):/backup \
-  alpine tar xzf /backup/data_backup_YYYYMMDD.tar.gz -C /data
+tar xzf db_backup_YYYYMMDD.tar.gz
+tar xzf data_backup_YYYYMMDD.tar.gz
 ```
 
 ---
 
-## 9. Přenos existujících dat (migrace z bind mountů)
+## Datové složky
 
-Pokud jsi dříve používal bind mounty (`./db/`, `./data_storage/`) a chceš data
-přenést do nových volumes:
-
-```bash
-# Spusť jednou (vytvoří volumes)
-docker compose up -d --build
-
-# Zkopíruj databázi do volume
-docker run --rm \
-  -v $(pwd)/db:/src \
-  -v vlaky_db:/dst \
-  alpine cp -r /src/. /dst/
-
-# Zkopíruj binární soubory
-docker run --rm \
-  -v $(pwd)/data_storage:/src \
-  -v vlaky_data:/dst \
-  alpine cp -r /src/. /dst/
-```
+| Složka           | Obsah                           | V gitu |
+|------------------|---------------------------------|--------|
+| `./db/`          | SQLite databáze (`vlaky.db`)    | Ne     |
+| `./data_storage/`| Binární soubory průjezdů (.bin) | Ne     |
 
 ---
-
-## Přehled volumes
-
-| Volume       | Obsah                          | Smazat lze pouze s `-v` |
-|--------------|--------------------------------|------------------------|
-| `vlaky_db`   | SQLite databáze (`vlaky.db`)   | Ano                    |
-| `vlaky_data` | Binární soubory průjezdů (.bin)| Ano                    |
 
 ## Síťové požadavky
 
