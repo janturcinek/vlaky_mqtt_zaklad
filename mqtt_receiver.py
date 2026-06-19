@@ -57,15 +57,60 @@ class DataPacket:
         
 
 def _cleanup_stale_buffers():
-    """Zahazuje neúplné packet buffery starší než BUFFER_TIMEOUT_SECONDS."""
+    """Ukládá neúplné packet buffery po vypršení timeoutu místo jejich zahazování."""
     now = monotonic()
     stale = [k for k, t in list(buffer_timestamps.items()) if (now - t) > BUFFER_TIMEOUT_SECONDS]
     for k in stale:
-        n = len(packet_buffers.get(k, {}))
-        print(f"[MQTT] Timeout: zahazuji neúplný buffer zařízení {k[0]} ({n} paketů)")
-        _log_message("cleanup", str(k[0]), True, f"zahozena neúplná zpráva ({n} paketů, timeout {BUFFER_TIMEOUT_SECONDS}s)")
+        device_id, session_ts = k
+        buf = packet_buffers.get(k, {})
+        n_received = len(buf)
+
+        if n_received == 0:
+            packet_buffers.pop(k, None)
+            buffer_timestamps.pop(k, None)
+            _device_session.pop(device_id, None)
+            continue
+
+        # Zjisti celkový počet paketů z posledního přijatého
+        last_pkt_raw = buf[max(buf.keys())]
+        try:
+            tmp = struct.unpack(format_str, last_pkt_raw)
+            total_expected = tmp[3]  # total_packet_nr
+        except Exception:
+            total_expected = "?"
+
+        print(f"[MQTT] Timeout: ukládám neúplný buffer zařízení {device_id} ({n_received}/{total_expected} paketů)")
+
+        try:
+            # Seřaď dostupné pakety a spoj
+            ordered = [buf[i] for i in sorted(buf.keys())]
+            bin_data = b"".join(ordered)
+
+            session = _device_session.get(device_id, {})
+            ts_str = session.get("ts_str", datetime.now().isoformat())
+            measured_at = session.get("measured_at")
+
+            base_path = f"data_storage/{device_id}"
+            os.makedirs(base_path, exist_ok=True)
+            filename = f"{base_path}/{ts_str.replace(':', '-')}_incomplete.bin"
+            with open(filename, "wb") as f:
+                f.write(bin_data)
+
+            message_id = data_funkce.uloz_zpravu(
+                device_id, f"NRF/{device_id}/UP_STREAM",
+                n_received, filename, measured_at,
+                is_complete=False,
+            )
+            _log_message("cleanup", str(device_id), True,
+                         f"nekompletní zpráva uložena ({n_received}/{total_expected} paketů)")
+            print(f"[MQTT] Nekompletní zpráva uložena: {filename} (msg_id={message_id})")
+        except Exception as e:
+            get_logger().error("Ukládání nekompletní zprávy selhalo [device=%s]: %s", device_id, e)
+            _log_message("cleanup", str(device_id), True, f"chyba ukládání neúplné zprávy: {e}")
+
         packet_buffers.pop(k, None)
         buffer_timestamps.pop(k, None)
+        _device_session.pop(device_id, None)
 
 
 def on_sys_message(client_id: str, topic: str, payload: bytes):

@@ -86,6 +86,9 @@
                 <tr id="row-{{ msg.message_id }}">
                     <td class="ts-cell" title="doručeno: {{ msg.assigned }}">
                         {{ msg.measured_at or msg.assigned }}
+                        {% if not msg.is_complete %}
+                        <span class="badge-incomplete" title="Zpráva nebyla přijata celá — chybí část paketů">nekompletní</span>
+                        {% endif %}
                     </td>
                     <td>{{ msg.packets }}</td>
                     <td id="type-{{ msg.message_id }}">

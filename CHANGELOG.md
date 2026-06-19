@@ -4,6 +4,16 @@ Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/).
 
 ---
 
+## [1.9] — 2026-06-19
+
+### Přidáno
+- Ukládání nekompletních zpráv po vypršení assembler timeoutu — místo zahazení se dostupné pakety spojí, uloží do `.bin` souboru s příponou `_incomplete` a zapíší do DB s příznakem `is_complete = 0`
+- Sloupec `is_complete` v tabulce `messages` (migrace přes `ALTER TABLE` při startu)
+- Badge „nekompletní" v seznamu průjezdů (žlutý, s tooltipem) pro záznamy s `is_complete = 0`
+- CSS třída `.badge-incomplete`
+
+---
+
 ## [1.8] — 2026-06-17
 
 ### Opraveno

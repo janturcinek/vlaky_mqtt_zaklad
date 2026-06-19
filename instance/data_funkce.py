@@ -132,11 +132,13 @@ def init_db():
             (t["typ"], t["pomer"], t["dvojkoli_mm"], t["popis"])
         )
 
-    # Migrace: přidej measured_at do existujících DB
+    # Migrace: přidej chybějící sloupce do existujících DB
     c.execute("PRAGMA table_info(messages)")
     existing_cols = {row[1] for row in c.fetchall()}
     if "measured_at" not in existing_cols:
         c.execute("ALTER TABLE messages ADD COLUMN measured_at TEXT")
+    if "is_complete" not in existing_cols:
+        c.execute("ALTER TABLE messages ADD COLUMN is_complete INTEGER NOT NULL DEFAULT 1")
 
     conn.commit()
     conn.close()
@@ -488,14 +490,14 @@ def posledni_zprava():
     conn.close()
     return result
 
-def uloz_zpravu(device_id, topic, total_packets, filename, measured_at=None):
+def uloz_zpravu(device_id, topic, total_packets, filename, measured_at=None, is_complete=True):
     conn = get_db_connection()
     c = conn.cursor()
     message_id = None
     try:
         c.execute(
-            "INSERT INTO messages (device_id, topic, packets, filename, measured_at) VALUES (?, ?, ?, ?, ?)",
-            (device_id, topic, total_packets, filename, measured_at)
+            "INSERT INTO messages (device_id, topic, packets, filename, measured_at, is_complete) VALUES (?, ?, ?, ?, ?, ?)",
+            (device_id, topic, total_packets, filename, measured_at, 1 if is_complete else 0)
         )
         conn.commit()
         message_id = c.lastrowid
@@ -813,7 +815,8 @@ def dej_seznam_zprav(id):
     c = conn.cursor()
     c.execute("""
               SELECT message_id, messages.assigned, packets, filename,
-                     train_type, speed_kmh, damage_detected, measured_at
+                     train_type, speed_kmh, damage_detected, measured_at,
+                     COALESCE(is_complete, 1)
               FROM messages
               JOIN devices ON messages.device_id = devices.device_id
               WHERE messages.device_id = ?
@@ -830,6 +833,7 @@ def dej_seznam_zprav(id):
             "speed_kmh": r[5],
             "damage_detected": r[6],
             "measured_at": r[7],
+            "is_complete": bool(r[8]),
         }
         for r in rows
     ]

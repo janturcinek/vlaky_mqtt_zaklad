@@ -925,6 +925,9 @@ nav ul li a:hover {
     color: #991b1b;
 }
 
+/* ── Nekompletní zpráva ── */
+.badge-incomplete { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 4px; font-size: .72rem; font-weight: 700; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; vertical-align: middle; }
+
 /* ── Context-specific overrides ── */
 .badge-danger + a, .badge-danger + button { margin-left: 6px; }
 .login-card-body .flash-list { margin-top: 20px; }
