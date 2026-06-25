@@ -4,6 +4,50 @@ Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/).
 
 ---
 
+## [2.4] — 2026-06-25
+
+### Opraveno
+- Timeout packet bufferu měří nyní rozestup mezi pakety (ne celkový čas přenosu) — `buffer_timestamps` se aktualizuje při každém přijatém paketu, takže pomalý ale kontinuální přenos nevyprší předčasně
+
+### Změněno
+- `BUFFER_TIMEOUT_SECONDS` přesunuto z `mqtt_receiver.py` do `nastaveni.py` pro snazší konfiguraci
+
+---
+
+## [2.3] — 2026-06-24
+
+### Přidáno
+- Zelený indikátor „UNIT ALIVE" v hlavičce karty zařízení na dashboardu — zobrazuje čas posledního heartbeatu; tečka je zelená (< 10 min) nebo šedá (starší); aktualizuje se automaticky každých 15 s
+
+---
+
+## [2.2] — 2026-06-24
+
+### Opraveno
+- Tlačítko „← Zpět na seznam" v detailu MQTT logu nyní používá styl `btn btn-sm btn-secondary` shodně s ostatními tlačítky v aplikaci
+
+---
+
+## [2.1] — 2026-06-24
+
+### Přidáno
+- Denní MQTT log: každý den vznikne soubor `db/mqtt_logs/YYYY-MM-DD.log` se záznamy všech příchozích zpráv
+- Logované události: `COMPLETE` (zpráva sestavena), `INCOMPLETE` (timeout), `REJECTED` (neregistrované zařízení), `PARSE_ERR` (chyba rozbalení paketu), `CLASSIFY_ERR` (chyba klasifikace)
+- Admin stránka `/auth/admin/mqtt-log` — seznam denních souborů s možností rozkliknutí
+- Detail logu `/auth/admin/mqtt-log/YYYY-MM-DD.log` — tabulka událostí s barevným odlišením typů (read-only, bez mazání)
+- Položka „MQTT log" v administrátorském menu
+
+---
+
+## [2.0] — 2026-06-24
+
+### Opraveno
+- Klíč packet bufferu přepracován: místo času příchodu na server se jako klíč session používá `packet.timestamp` ze zařízení — opravuje bug, kdy přijde paket #1 pozdě (retransmise) a resetuje session, což osiřelé pakety 2–N posílá do timeoutu jako `_incomplete`
+- `_device_session` nově klíčován dvojicí `(device_id, device_ts)` místo pouhého `device_id` — umožňuje korektní zpracování více transmisí z jednoho zařízení zároveň
+- Název `.bin` souboru nyní odráží čas měření ze zařízení, ne čas příchodu na server
+
+---
+
 ## [1.9] — 2026-06-19
 
 ### Přidáno

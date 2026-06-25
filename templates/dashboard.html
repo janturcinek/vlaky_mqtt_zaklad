@@ -42,6 +42,11 @@
         <div>
             <span class="device-name">{{ z.client_id }}</span>
             {% if z.location %}<span class="device-location">{{ z.location }}</span>{% endif %}
+            <span class="alive-badge" id="alive-{{ z.device_id }}">
+                {% if z.last_alive %}
+                <span class="alive-dot"></span><span class="alive-time">{{ z.last_alive[11:] }}</span>
+                {% endif %}
+            </span>
         </div>
         <div class="device-card-actions">
             <button onclick="hideDevice({{ z.device_id }})"
@@ -253,6 +258,19 @@ function updateDashboard() {
                         lastEl.innerHTML = '<span class="text-muted">—</span>';
                     }
                 }
+                // alive indikátor
+                const aliveEl = document.getElementById('alive-' + id);
+                if (aliveEl) {
+                    if (z.last_alive) {
+                        const ageMs = Date.now() - new Date(z.last_alive).getTime();
+                        const timeStr = z.last_alive.substring(11, 19);
+                        const recent = ageMs < 10 * 60 * 1000;
+                        aliveEl.innerHTML = `<span class="alive-dot ${recent ? 'alive-dot-green' : 'alive-dot-gray'}"></span><span class="alive-time">${timeStr}</span>`;
+                    } else {
+                        aliveEl.innerHTML = '';
+                    }
+                }
+
                 totalTrains += z.total_trains || 0;
                 totalWeek   += z.trains_week  || 0;
             });

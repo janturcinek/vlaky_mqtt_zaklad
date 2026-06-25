@@ -925,8 +925,28 @@ nav ul li a:hover {
     color: #991b1b;
 }
 
+/* ── UNIT ALIVE indikátor ── */
+.alive-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; vertical-align: middle; }
+.alive-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.alive-dot-green { background: #16a34a; box-shadow: 0 0 4px #16a34a88; }
+.alive-dot-gray  { background: #9ca3af; }
+.alive-time { font-size: .72rem; color: var(--gray-mid); font-family: monospace; }
+
 /* ── Nekompletní zpráva ── */
 .badge-incomplete { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 4px; font-size: .72rem; font-weight: 700; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; vertical-align: middle; }
+
+/* ── MQTT log badges ── */
+.mlt-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.mlt-badge-complete     { background: #dcfce7; color: #166534; }
+.mlt-badge-incomplete   { background: #fef3c7; color: #92400e; }
+.mlt-badge-rejected     { background: #fee2e2; color: #991b1b; }
+.mlt-badge-parse_err    { background: #fee2e2; color: #991b1b; }
+.mlt-badge-classify_err { background: #ffedd5; color: #9a3412; }
+.mlt-badge-raw          { background: var(--gray-light); color: var(--gray-dark); }
+.mlt-row-rejected       { background: #fff5f5; }
+.mlt-row-parse_err      { background: #fff5f5; }
+.mlt-row-incomplete     { background: #fffbeb; }
+.mlt-row-classify_err   { background: #fff7ed; }
 
 /* ── Context-specific overrides ── */
 .badge-danger + a, .badge-danger + button { margin-left: 6px; }

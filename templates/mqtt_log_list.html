@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>MQTT log</h1>
+    <p class="page-subtitle">Denní záznamy příchozích MQTT zpráv</p>
+</div>
+
+{% if log_files %}
+<div class="data-card">
+    <table>
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Velikost</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in log_files %}
+            <tr>
+                <td class="td-mono td-bold">{{ f.date }}</td>
+                <td class="td-gray">{{ f.size_kb }} kB</td>
+                <td><a href="/auth/admin/mqtt-log/{{ f.filename }}" class="btn btn-sm btn-primary">Zobrazit</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="data-card list-card">
+    <span class="td-empty">Žádné log soubory zatím neexistují.</span>
+</div>
+{% endif %}
+
+{% endblock %}

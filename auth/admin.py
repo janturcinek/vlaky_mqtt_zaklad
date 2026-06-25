@@ -6,6 +6,7 @@ from auth.models import User, load_labels
 from decorators import require_login
 from helpers import templates, template_context
 from app_logger import LOG_FILE
+import mqtt_log
 
 admin_router = APIRouter(prefix="/auth/admin")
 
@@ -76,3 +77,34 @@ async def error_log_clear(request: Request, current_user: User = Depends(require
     if os.path.exists(LOG_FILE):
         open(LOG_FILE, "w", encoding="utf-8").close()
     return RedirectResponse(url="/auth/admin/error-log", status_code=302)
+
+
+@admin_router.get("/mqtt-log")
+async def mqtt_log_list(request: Request, current_user: User = Depends(require_login)):
+    if not current_user.admin:
+        return RedirectResponse(url="/auth/dashboard", status_code=302)
+    files = mqtt_log.list_log_files()
+    return templates.TemplateResponse(
+        request, "mqtt_log_list.html",
+        context=template_context(request, current_user,
+                                 title="MQTT log",
+                                 log_files=files,
+                                 labels=load_labels(lang="cz")),
+    )
+
+
+@admin_router.get("/mqtt-log/{filename}")
+async def mqtt_log_detail(filename: str, request: Request, current_user: User = Depends(require_login)):
+    if not current_user.admin:
+        return RedirectResponse(url="/auth/dashboard", status_code=302)
+    entries = mqtt_log.read_log_file(filename)
+    if entries is None:
+        return RedirectResponse(url="/auth/admin/mqtt-log", status_code=302)
+    return templates.TemplateResponse(
+        request, "mqtt_log_detail.html",
+        context=template_context(request, current_user,
+                                 title=f"MQTT log — {filename[:-4]}",
+                                 filename=filename,
+                                 entries=entries,
+                                 labels=load_labels(lang="cz")),
+    )

@@ -7,7 +7,7 @@ from auth.models import User, load_labels
 from decorators import require_login
 from helpers import templates, template_context, flash
 import classifier as clf  # noqa: E402
-from mqtt_receiver import recent_messages
+from mqtt_receiver import recent_messages, device_alive
 
 device_router = APIRouter(prefix="/auth")
 
@@ -211,6 +211,8 @@ async def mqtt_log(current_user: User = Depends(require_login)):
 @device_router.get("/api/dashboard")
 async def dashboard_api(request: Request, current_user: User = Depends(require_login)):
     prehled = data_funkce.dej_prehled_pro_uzivatele(current_user.id, current_user.admin)
+    for z in prehled:
+        z["last_alive"] = device_alive.get(z["device_id"])
     return JSONResponse(prehled)
 
 

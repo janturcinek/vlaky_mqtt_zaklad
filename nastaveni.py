@@ -1,6 +1,8 @@
 import os
 
-APP_VERSION = "1.8"
+APP_VERSION = "2.4"
+
+BUFFER_TIMEOUT_SECONDS = 30  # max. rozestup mezi pakety jednoho přenosu (s)
 
 WAVE_SAMPLE_LEN = 1024
 

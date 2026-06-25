@@ -8,19 +8,22 @@ from datetime import datetime
 import numpy as np
 import os
 from collections import deque
-from nastaveni import WAVE_SAMPLE_LEN, format_str, FORMAT_TELEMETRY_V1, FORMAT_TELEMETRY_V2
+from nastaveni import WAVE_SAMPLE_LEN, format_str, FORMAT_TELEMETRY_V1, FORMAT_TELEMETRY_V2, BUFFER_TIMEOUT_SECONDS
 from time import sleep, monotonic
 from app_logger import get_logger
+from mqtt_log import log_event
 
 _TELEMETRY_V1_SIZE = struct.calcsize(FORMAT_TELEMETRY_V1)
 _TELEMETRY_SIZE = struct.calcsize(FORMAT_TELEMETRY_V2)  # V2
 
 packet_buffers = {}  # Globální buffer pro zprávy
 buffer_timestamps = {}  # kdy přišel první paket každého bufferu (monotonic)
-BUFFER_TIMEOUT_SECONDS = 30  # neúplné buffery starší než X sekund jsou zahozeny
 
 # ── Live log posledních příchozích zpráv (max 50) ──
 recent_messages = deque(maxlen=50)
+
+# ── Poslední "UNIT ALIVE" heartbeat per zařízení ──
+device_alive: dict[int, str] = {}  # device_id → ISO timestamp
 
 
 def _log_message(topic: str, client_id: str, registered: bool, note: str = ""):
@@ -68,7 +71,7 @@ def _cleanup_stale_buffers():
         if n_received == 0:
             packet_buffers.pop(k, None)
             buffer_timestamps.pop(k, None)
-            _device_session.pop(device_id, None)
+            _device_session.pop(k, None)
             continue
 
         # Zjisti celkový počet paketů z posledního přijatého
@@ -86,7 +89,7 @@ def _cleanup_stale_buffers():
             ordered = [buf[i] for i in sorted(buf.keys())]
             bin_data = b"".join(ordered)
 
-            session = _device_session.get(device_id, {})
+            session = _device_session.get(k, {})
             ts_str = session.get("ts_str", datetime.now().isoformat())
             measured_at = session.get("measured_at")
 
@@ -101,6 +104,7 @@ def _cleanup_stale_buffers():
                 n_received, filename, measured_at,
                 is_complete=False,
             )
+            log_event("INCOMPLETE", dev=device_id, rcvd=n_received, expected=total_expected, msg_id=message_id)
             _log_message("cleanup", str(device_id), True,
                          f"nekompletní zpráva uložena ({n_received}/{total_expected} paketů)")
             print(f"[MQTT] Nekompletní zpráva uložena: {filename} (msg_id={message_id})")
@@ -110,7 +114,7 @@ def _cleanup_stale_buffers():
 
         packet_buffers.pop(k, None)
         buffer_timestamps.pop(k, None)
-        _device_session.pop(device_id, None)
+        _device_session.pop(k, None)
 
 
 def on_sys_message(client_id: str, topic: str, payload: bytes):
@@ -118,6 +122,12 @@ def on_sys_message(client_id: str, topic: str, payload: bytes):
     device_id = data_funkce.registerovano(client_id)
     if not device_id:
         _log_message(topic, client_id, False, "zařízení není registrováno")
+        return
+
+    if payload == b"UNIT ALIVE":
+        device_alive[device_id] = datetime.now().isoformat(timespec="seconds")
+        _log_message(topic, client_id, True, "UNIT ALIVE")
+        print(f"[MQTT SYS] {topic} | {client_id} | ✓ registrováno | UNIT ALIVE")
         return
 
     print(f"[MQTT SYS] {client_id}: payload {len(payload)} B (V1={_TELEMETRY_V1_SIZE}, V2={_TELEMETRY_SIZE})")
@@ -208,34 +218,34 @@ def on_message(client, userdata, msg):
     except struct.error as e:
         _log_message(msg.topic, client_id, False, f"chyba rozbalení: {e}")
         get_logger().error("Rozbalení datového paketu selhalo [%s]: %s", msg.topic, e)
+        log_event("PARSE_ERR", client=client_id, topic=msg.topic, error=str(e))
         print(f"[MQTT] Chyba rozbalení paketu z {msg.topic}: {e}")
         return
 
     device_id = data_funkce.registerovano(client_id)
     if not device_id:
         _log_message(msg.topic, client_id, False, "zařízení není registrováno")
+        log_event("REJECTED", client=client_id, topic=msg.topic)
         print(f"[MQTT] Neregistrované zařízení: {client_id} ({msg.topic})")
         return
 
     _log_message(msg.topic, client_id, True, pkt_info)
     print(f"[MQTT] {msg.topic} → {pkt_info}")
 
-    if packet.actual_packet_nr == 1 or device_id not in _device_session:
-        ts = int(datetime.now().timestamp())
-        device_ts = packet.timestamp if packet.timestamp > 0 else ts
-        _device_session[device_id] = {
-            "ts": ts,
-            "ts_str": datetime.fromtimestamp(ts).isoformat(),
-            "measured_at": datetime.fromtimestamp(device_ts).isoformat(timespec="seconds"),
-        }
-        print(f"[MQTT] Nová sezení pro {device_id}, timestamp={ts}, measured_at={device_ts}")
+    device_ts = packet.timestamp if packet.timestamp > 0 else int(datetime.now().timestamp())
+    key = (device_id, device_ts)
 
-    key = (device_id, _device_session[device_id]["ts"])
-    
-    # 📦 místo listu použij slovník s číslem paketu jako klíč
     if key not in packet_buffers:
         packet_buffers[key] = {}
         buffer_timestamps[key] = monotonic()
+        _device_session[key] = {
+            "ts_str": datetime.fromtimestamp(device_ts).isoformat(),
+            "measured_at": datetime.fromtimestamp(device_ts).isoformat(timespec="seconds"),
+        }
+        print(f"[MQTT] Nová sezení pro {device_id}, device_ts={device_ts}")
+
+    # Obnov timestamp — timeout měří rozestup mezi pakety, ne celkový čas přenosu
+    buffer_timestamps[key] = monotonic()
 
     # 📛 pokud už jsme tento paket přijali, přepiš (nepřidávej duplikát)
     packet_buffers[key][packet.actual_packet_nr] = msg.payload
@@ -252,15 +262,16 @@ def on_message(client, userdata, msg):
 
         base_path = f"data_storage/{device_id}"
         os.makedirs(base_path, exist_ok=True)
-        ts_str = _device_session[device_id]["ts_str"]
+        ts_str = _device_session[key]["ts_str"]
         filename = f"{base_path}/{ts_str.replace(':', '-')}.bin"
         with open(filename, "wb") as f:
             f.write(bin_data)
 
         # zápis do databáze
-        measured_at = _device_session[device_id]["measured_at"]
+        measured_at = _device_session[key]["measured_at"]
         message_id = data_funkce.uloz_zpravu(device_id, msg.topic, packet.total_packet_nr, filename, measured_at)
 
+        log_event("COMPLETE", dev=device_id, pkts=packet.total_packet_nr, msg_id=message_id)
         print(f"Complete message saved to {filename}")
 
         # automatická klasifikace vlaku
@@ -271,12 +282,13 @@ def on_message(client, userdata, msg):
             print(f"[MQTT] Klasifikace: {result['typ_vlaku']}, rychlost {result['rychlost_kmh']} km/h, poškození {result['poskozeni_podvozku']}")
         except Exception as e:
             get_logger().error("Klasifikace selhala [msg_id=%s, file=%s]:\n%s", message_id, filename, traceback.format_exc())
+            log_event("CLASSIFY_ERR", dev=device_id, msg_id=message_id, error=str(e))
             print(f"[MQTT] Chyba klasifikace: {e}")
 
         # cleanup
         del packet_buffers[key]
         buffer_timestamps.pop(key, None)
-        _device_session.pop(device_id, None)
+        _device_session.pop(key, None)
 
 
     

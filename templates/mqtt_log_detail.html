@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>MQTT log — {{ filename[:-4] }}</h1>
+    <a href="/auth/admin/mqtt-log" class="btn btn-sm btn-secondary" style="margin-top: 6px; display: inline-block;">← Zpět na seznam</a>
+</div>
+
+<div class="error-log-toolbar">
+    {% if entries %}
+    <span class="error-log-count">{{ entries|length }} záznam{{ 'ů' if entries|length > 4 else ('y' if entries|length > 1 else '') }}</span>
+    {% else %}
+    <span class="error-log-empty-msg">Soubor je prázdný.</span>
+    {% endif %}
+</div>
+
+{% if entries %}
+<div class="data-card scrollable" style="max-height: 600px;">
+    <table class="error-log-table">
+        <thead>
+            <tr>
+                <th class="elt-col-ts">Čas</th>
+                <th class="elt-col-level">Typ</th>
+                <th class="elt-col-msg">Detail</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in entries %}
+            <tr class="elt-row mlt-row-{{ e.type | lower }}">
+                <td class="elt-ts td-nowrap td-mono">{{ e.ts }}</td>
+                <td>
+                    <span class="mlt-badge mlt-badge-{{ e.type | lower }}">{{ e.type }}</span>
+                </td>
+                <td class="elt-msg td-mono" style="font-size: .82rem;">{{ e.detail }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}
