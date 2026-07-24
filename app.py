@@ -52,7 +52,10 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(NotAuthorizedException)
     async def not_authorized_handler(request: Request, exc: NotAuthorizedException):
-        return RedirectResponse(url="/auth/login", status_code=302)
+        # Uživatel JE přihlášen, jen mu chybí potřebná role — na rozdíl od
+        # NotAuthenticatedException ho tedy neposíláme zpět na login (to by
+        # vypadalo jako neočekávané odhlášení), ale na jeho vlastní dashboard.
+        return RedirectResponse(url="/auth/dashboard", status_code=302)
 
     @app.get("/")
     async def root(request: Request):
@@ -60,7 +63,10 @@ def create_app() -> FastAPI:
             return RedirectResponse(url="/auth/dashboard", status_code=302)
         return RedirectResponse(url="/auth/login", status_code=302)
 
-    # Jednorázový endpoint pro přidání uživatele
+    # Jednorázový endpoint pro přidání prvního admin účtu.
+    # Funguje jen dokud v databázi neexistuje ŽÁDNÝ uživatel — po prvním
+    # vytvořeném účtu (jakémkoli) se natrvalo uzamkne, aby nezůstal
+    # neomezeně dostupný komukoli se síťovým přístupem k aplikaci.
     @app.get("/add-user", response_class=HTMLResponse)
     async def add_user():
         login = 'admin'
@@ -71,12 +77,11 @@ def create_app() -> FastAPI:
         conn = sqlite3.connect(DevelopmentConfig.DATABASE)
         c = conn.cursor()
 
-        c.execute("SELECT user_id FROM users WHERE login = ?", (login,))
-        existing_user = c.fetchone()
-
-        if existing_user:
+        c.execute("SELECT COUNT(*) FROM users")
+        if c.fetchone()[0] > 0:
             conn.close()
-            return f"⚠️ Uživatel '{login}' už existuje s ID {existing_user[0]}"
+            return "⚠️ Endpoint je uzamčen — v databázi už existuje alespoň jeden uživatel. " \
+                   "Nové účty vytvářejte přes Správa uživatelů v aplikaci."
 
         c.execute("INSERT INTO users (name, surname, login) VALUES (?, ?, ?)",
                   (name, surname, login))

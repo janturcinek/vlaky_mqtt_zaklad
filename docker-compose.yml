@@ -12,4 +12,10 @@ services:
     environment:
       - SECRET_KEY=změňte_mě_na_tajný_řetězec_min_32_znaků
       - TZ=Europe/Prague
+      # Volitelné přepsání MQTT brokeru — bez nastavení se použije výchozí
+      # sdílený kurzovní broker definovaný v nastaveni.py.
+      # - MQTT_HOST=vase-domena.example.com
+      # - MQTT_PORT=1883
+      # - MQTT_USERNAME=vase-uzivatelske-jmeno
+      # - MQTT_PASSWORD=vase-heslo
     restart: unless-stopped

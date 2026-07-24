@@ -2,6 +2,7 @@
 from fastapi import Request, Depends
 from instance import data_funkce
 from auth.models import load_user
+from helpers import flash
 
 
 class NotAuthenticatedException(Exception):
@@ -42,6 +43,7 @@ def ma_roli(role: str):
         if not user:
             raise NotAuthenticatedException()
         if not data_funkce.ma_roli(user.id, role):
+            flash(request, f"K této akci nemáte dostatečné oprávnění (vyžaduje roli „{role}“).", "danger")
             raise NotAuthorizedException()
         return user
     return dependency

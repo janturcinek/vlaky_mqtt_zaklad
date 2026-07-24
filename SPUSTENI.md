@@ -30,6 +30,17 @@ ports:
   - "5000:8000"
 ```
 
+**Volitelné: vlastní MQTT broker** — ve výchozím nastavení se používá sdílený kurzovní broker
+`iot-course-but.cloud.shiftr.io`. Pro připojení k vlastnímu brokeru odkomentuj a uprav
+v `docker-compose.yml`:
+
+```yaml
+- MQTT_HOST=vase-domena.example.com
+- MQTT_PORT=1883
+- MQTT_USERNAME=vase-uzivatelske-jmeno
+- MQTT_PASSWORD=vase-heslo
+```
+
 ---
 
 ## 2. První spuštění
@@ -53,7 +64,13 @@ Po spuštění otevři v prohlížeči:
 http://<adresa-serveru>:5000/add-user
 ```
 
-Vytvoř admin uživatele (zapamatuj si přihlašovací údaje).
+Vytvoří se uživatel `admin` s heslem `admin123` — přihlas se a **heslo si hned změň**
+přes „Změnit heslo“ v horní liště aplikace.
+
+> **Pozn.:** Tento odkaz funguje jen jednou — jakmile v databázi existuje alespoň jeden
+> uživatel (i po obnově ze zálohy), endpoint se natrvalo uzamkne a další pokusy o jeho
+> otevření vrátí jen informační hlášku. Další uživatele přidávej výhradně přes
+> „Správa uživatelů“ uvnitř aplikace (jen pro adminy).
 
 ---
 

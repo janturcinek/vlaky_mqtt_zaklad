@@ -22,28 +22,13 @@ def _isna(x):
 def _notna(x):
     return not _isna(x)
 
-from nastaveni import WAVE_SAMPLE_LEN, format_str
+from nastaveni import WAVE_SAMPLE_LEN, format_str, TRAIN_TYPES_SEED
 
 FS = 2000.0
 
-# Záložní hardcoded databáze – použije se pouze pokud DB není dostupná
-_TRAIN_DB_FALLBACK = [
-    {"typ": "CZLoko1",            "pomer": 1.791667, "dvojkoli_mm": 2400},
-    {"typ": "CZLoko2",            "pomer": 2.75,     "dvojkoli_mm": 2400},
-    {"typ": "Škoda 380",          "pomer": 2.48,     "dvojkoli_mm": 2500},
-    {"typ": "ALSTOM TRAXX 160",   "pomer": 2.988462, "dvojkoli_mm": 2600},
-    {"typ": "ALSTOM TRAXX 160B",  "pomer": 2.996154, "dvojkoli_mm": 2600},
-    {"typ": "ALSTOM TRAXX 140",   "pomer": 3.015385, "dvojkoli_mm": 2600},
-    {"typ": "SIEMENS Vectron Dual","pomer": 3.0,     "dvojkoli_mm": 2700},
-    {"typ": "SIEMENS Vectron CD", "pomer": 2.166667, "dvojkoli_mm": 3000},
-    {"typ": "SIEMENS Vectron",    "pomer": 2.3,      "dvojkoli_mm": 3000},
-    {"typ": "Škoda 363",          "pomer": 1.59375,  "dvojkoli_mm": 3200},
-    {"typ": "Pendolino",          "pomer": 6.037037, "dvojkoli_mm": 2700},
-    {"typ": "LEO Express",        "pomer": 4.925926, "dvojkoli_mm": 2700},
-    {"typ": "Panter",             "pomer": 6.916667, "dvojkoli_mm": 2400},
-    {"typ": "Elefant",            "pomer": 6.3,      "dvojkoli_mm": 2600},
-    {"typ": "Newag Dragon 2",     "pomer": 1.00,     "dvojkoli_mm": 1950},
-]
+# Záložní databáze – použije se pouze pokud SQLite není dostupné.
+# Sdílený zdroj dat s počátečním seedem tabulky train_types, viz nastaveni.py.
+_TRAIN_DB_FALLBACK = TRAIN_TYPES_SEED
 
 
 def _get_train_db():

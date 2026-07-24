@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import RedirectResponse, JSONResponse
 from instance import data_funkce
 from auth.models import User, load_labels
-from decorators import require_login
+from decorators import require_login, ma_roli
 from helpers import templates, template_context, flash
 import classifier as clf  # noqa: E402
 from mqtt_receiver import recent_messages, device_alive
@@ -192,7 +192,7 @@ async def message_classify(message_id: int, request: Request,
 
 
 @device_router.get("/stats")
-async def stats():
+async def stats(current_user: User = Depends(require_login)):
     devices = data_funkce.dej_pocet_zarizeni()
     packets = data_funkce.celkem_paketu()
     last_message = data_funkce.posledni_zprava()
@@ -218,17 +218,8 @@ async def dashboard_api(request: Request, current_user: User = Depends(require_l
 
 # ── Správa typů vlaků ────────────────────────────────────────────────────────
 
-def _require_admin(current_user: User):
-    if not current_user.admin:
-        return False
-    return True
-
-
 @device_router.get("/train-types")
-async def train_types_get(request: Request, current_user: User = Depends(require_login)):
-    if not current_user.admin:
-        flash(request, "Přístup pouze pro administrátory.", "danger")
-        return RedirectResponse(url="/auth/dashboard", status_code=302)
+async def train_types_get(request: Request, current_user: User = Depends(ma_roli("admin"))):
     typy = data_funkce.dej_seznam_typu_vlaku()
     return templates.TemplateResponse(
         request, "train_types.html",
@@ -238,9 +229,7 @@ async def train_types_get(request: Request, current_user: User = Depends(require
 
 
 @device_router.post("/train-types")
-async def train_types_post(request: Request, current_user: User = Depends(require_login)):
-    if not current_user.admin:
-        return RedirectResponse(url="/auth/dashboard", status_code=302)
+async def train_types_post(request: Request, current_user: User = Depends(ma_roli("admin"))):
     form = await request.form()
     if "pridej_typ" in form:
         try:
@@ -254,9 +243,7 @@ async def train_types_post(request: Request, current_user: User = Depends(requir
 
 
 @device_router.get("/train-types/edit/{ttid}")
-async def train_type_edit_get(ttid: int, request: Request, current_user: User = Depends(require_login)):
-    if not current_user.admin:
-        return RedirectResponse(url="/auth/dashboard", status_code=302)
+async def train_type_edit_get(ttid: int, request: Request, current_user: User = Depends(ma_roli("admin"))):
     typy = data_funkce.dej_seznam_typu_vlaku()
     editovany = data_funkce.dej_typ_vlaku(ttid)
     return templates.TemplateResponse(
@@ -267,9 +254,7 @@ async def train_type_edit_get(ttid: int, request: Request, current_user: User = 
 
 
 @device_router.post("/train-types/edit/{ttid}")
-async def train_type_edit_post(ttid: int, request: Request, current_user: User = Depends(require_login)):
-    if not current_user.admin:
-        return RedirectResponse(url="/auth/dashboard", status_code=302)
+async def train_type_edit_post(ttid: int, request: Request, current_user: User = Depends(ma_roli("admin"))):
     form = await request.form()
     if "uloz_typ" in form:
         try:
@@ -284,9 +269,7 @@ async def train_type_edit_post(ttid: int, request: Request, current_user: User =
 
 
 @device_router.post("/train-types/delete/{ttid}")
-async def train_type_delete(ttid: int, request: Request, current_user: User = Depends(require_login)):
-    if not current_user.admin:
-        return RedirectResponse(url="/auth/dashboard", status_code=302)
+async def train_type_delete(ttid: int, request: Request, current_user: User = Depends(ma_roli("admin"))):
     data_funkce.smaz_typ_vlaku(ttid)
     flash(request, "Typ byl odstraněn.", "success")
     return RedirectResponse(url="/auth/train-types", status_code=302)

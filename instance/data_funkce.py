@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from werkzeug.security import generate_password_hash,check_password_hash
-from nastaveni import WAVE_SAMPLE_LEN, DevelopmentConfig
+from nastaveni import WAVE_SAMPLE_LEN, DevelopmentConfig, TRAIN_TYPES_SEED
 from datetime import datetime
 
 def get_db_connection():
@@ -126,7 +126,7 @@ def init_db():
     c.execute("INSERT OR IGNORE INTO system_roles (name, sysid) VALUES ('User',  'user')")
 
     # Seed: typy vlaků
-    for t in _TRAIN_DB_SEED:
+    for t in TRAIN_TYPES_SEED:
         c.execute(
             "INSERT OR IGNORE INTO train_types (typ, pomer, dvojkoli_mm, popis) VALUES (?, ?, ?, ?)",
             (t["typ"], t["pomer"], t["dvojkoli_mm"], t["popis"])
@@ -357,25 +357,6 @@ def dej_detail_uzivatele(id):
             conn.close()
     
 
-def save_packet_to_db(device_id, topic, timestamp, packet_nr, total_packets):
-    conn = get_db_connection()
-    c = conn.cursor()
-    try:
-        c.execute('''
-            INSERT INTO mqtt_packets (client_id, topic, timestamp, packet_nr, total_packets)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (
-            device_id,
-            topic,
-            timestamp,
-            packet_nr,
-            total_packets
-        ))
-        conn.commit()
-    except Exception as e:
-        print("nepodařilo se uložit z následujícího důvodu: ",e)
-    conn.close()
-    
 def celkem_paketu():
     conn = get_db_connection()
     c = conn.cursor()
@@ -419,14 +400,15 @@ def dej_zarizeni(id):
     conn = get_db_connection()
     try:
         c = conn.cursor()
-        c.execute("""SELECT device_id,client_id, location,assigned, name,surname,description 
-                    FROM devices join users using(user_id) where device_id=?""",(id))
+        c.execute("""SELECT device_id,client_id, location,assigned, name,surname,description
+                    FROM devices join users using(user_id) where device_id=?""", (int(id),))
         device=c.fetchone()
-        conn.close
         device={"device_id":device[0],"oznaceni":device[1],"poloha":device[2],"vlozil": f"{device[4]} {device[5]}","vlozeno":device[3],"popis":device[6]}
     except Exception as e:
         print(e)
-        device={"device_id":"","oznaceni":"","poloha":"","vlozil": "","vlozeno":"","popis":""}    
+        device={"device_id":"","oznaceni":"","poloha":"","vlozil": "","vlozeno":"","popis":""}
+    finally:
+        conn.close()
     return device
 
 def pridej_zarizeni(user_id,form):
@@ -572,71 +554,6 @@ def dej_prehled_zarizeni():
 
 
 # ── Správa přístupů k zařízením ─────────────────────────────────────────────
-
-def ensure_device_access_table():
-    """Vytvoří tabulku device_access, pokud neexistuje."""
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS device_access (
-            access_id  INTEGER PRIMARY KEY AUTOINCREMENT,
-            device_id  INTEGER NOT NULL,
-            user_id    INTEGER NOT NULL,
-            can_edit   INTEGER NOT NULL DEFAULT 0,
-            assigned   TEXT DEFAULT (datetime('now','localtime')),
-            UNIQUE(device_id, user_id),
-            FOREIGN KEY (device_id) REFERENCES devices(device_id),
-            FOREIGN KEY (user_id) REFERENCES users(user_id)
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-
-# ── Databáze typů lokomotiv / vlaků ─────────────────────────────────────────
-
-_TRAIN_DB_SEED = [
-    {"typ": "CZLoko1",            "pomer": 1.791667, "dvojkoli_mm": 2400, "popis": ""},
-    {"typ": "CZLoko2",            "pomer": 2.75,     "dvojkoli_mm": 2400, "popis": ""},
-    {"typ": "Škoda 380",          "pomer": 2.48,     "dvojkoli_mm": 2500, "popis": ""},
-    {"typ": "ALSTOM TRAXX 160",   "pomer": 2.988462, "dvojkoli_mm": 2600, "popis": ""},
-    {"typ": "ALSTOM TRAXX 160B",  "pomer": 2.996154, "dvojkoli_mm": 2600, "popis": ""},
-    {"typ": "ALSTOM TRAXX 140",   "pomer": 3.015385, "dvojkoli_mm": 2600, "popis": ""},
-    {"typ": "SIEMENS Vectron Dual","pomer": 3.0,     "dvojkoli_mm": 2700, "popis": ""},
-    {"typ": "SIEMENS Vectron CD", "pomer": 2.166667, "dvojkoli_mm": 3000, "popis": ""},
-    {"typ": "SIEMENS Vectron",    "pomer": 2.3,      "dvojkoli_mm": 3000, "popis": ""},
-    {"typ": "Škoda 363",          "pomer": 1.59375,  "dvojkoli_mm": 3200, "popis": ""},
-    {"typ": "Pendolino",          "pomer": 6.037037, "dvojkoli_mm": 2700, "popis": "Jednotka ETR 470"},
-    {"typ": "LEO Express",        "pomer": 4.925926, "dvojkoli_mm": 2700, "popis": ""},
-    {"typ": "Panter",             "pomer": 6.916667, "dvojkoli_mm": 2400, "popis": ""},
-    {"typ": "Elefant",            "pomer": 6.3,      "dvojkoli_mm": 2600, "popis": ""},
-    {"typ": "Newag Dragon 2",     "pomer": 1.00,     "dvojkoli_mm": 1950, "popis": ""},
-]
-
-
-def ensure_train_types_table():
-    """Vytvoří tabulku train_types a naplní ji výchozími hodnotami."""
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS train_types (
-            train_type_id  INTEGER PRIMARY KEY AUTOINCREMENT,
-            typ            TEXT NOT NULL UNIQUE,
-            pomer          REAL NOT NULL,
-            dvojkoli_mm    INTEGER NOT NULL,
-            popis          TEXT DEFAULT '',
-            created        TEXT DEFAULT (datetime('now','localtime'))
-        )
-    """)
-    conn.commit()
-    # Osívování výchozími hodnotami (přeskočí existující)
-    for t in _TRAIN_DB_SEED:
-        c.execute("""
-            INSERT OR IGNORE INTO train_types (typ, pomer, dvojkoli_mm, popis)
-            VALUES (?, ?, ?, ?)
-        """, (t["typ"], t["pomer"], t["dvojkoli_mm"], t["popis"]))
-    conn.commit()
-    conn.close()
 
 
 def dej_seznam_typu_vlaku():
@@ -891,29 +808,6 @@ def ensure_classification_columns():
     for col, col_type in new_columns.items():
         if col not in existing:
             c.execute(f"ALTER TABLE messages ADD COLUMN {col} {col_type}")
-    conn.commit()
-    conn.close()
-
-
-def ensure_conditions_table():
-    """Vytvoří tabulku device_conditions, pokud neexistuje."""
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS device_conditions (
-            condition_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-            device_id      INTEGER NOT NULL,
-            received_at    TEXT NOT NULL,
-            temperature    REAL,
-            humidity       REAL,
-            pressure       REAL,
-            batt_mv        INTEGER,
-            signal_strength INTEGER,
-            uptime_minutes  INTEGER,
-            train_counter   INTEGER,
-            FOREIGN KEY (device_id) REFERENCES devices(device_id)
-        )
-    """)
     conn.commit()
     conn.close()
 

@@ -3,7 +3,7 @@ import re
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from auth.models import User, load_labels
-from decorators import require_login
+from decorators import ma_roli
 from helpers import templates, template_context
 from app_logger import LOG_FILE
 import mqtt_log
@@ -56,9 +56,7 @@ def _load_log_entries(max_entries: int = 200) -> list[dict]:
 
 
 @admin_router.get("/error-log")
-async def error_log_view(request: Request, current_user: User = Depends(require_login)):
-    if not current_user.admin:
-        return RedirectResponse(url="/auth/dashboard", status_code=302)
+async def error_log_view(request: Request, current_user: User = Depends(ma_roli("admin"))):
     entries = _load_log_entries()
     return templates.TemplateResponse(
         request, "error_log.html",
@@ -71,18 +69,14 @@ async def error_log_view(request: Request, current_user: User = Depends(require_
 
 
 @admin_router.post("/error-log/clear")
-async def error_log_clear(request: Request, current_user: User = Depends(require_login)):
-    if not current_user.admin:
-        return RedirectResponse(url="/auth/dashboard", status_code=302)
+async def error_log_clear(request: Request, current_user: User = Depends(ma_roli("admin"))):
     if os.path.exists(LOG_FILE):
         open(LOG_FILE, "w", encoding="utf-8").close()
     return RedirectResponse(url="/auth/admin/error-log", status_code=302)
 
 
 @admin_router.get("/mqtt-log")
-async def mqtt_log_list(request: Request, current_user: User = Depends(require_login)):
-    if not current_user.admin:
-        return RedirectResponse(url="/auth/dashboard", status_code=302)
+async def mqtt_log_list(request: Request, current_user: User = Depends(ma_roli("admin"))):
     files = mqtt_log.list_log_files()
     return templates.TemplateResponse(
         request, "mqtt_log_list.html",
@@ -94,9 +88,7 @@ async def mqtt_log_list(request: Request, current_user: User = Depends(require_l
 
 
 @admin_router.get("/mqtt-log/{filename}")
-async def mqtt_log_detail(filename: str, request: Request, current_user: User = Depends(require_login)):
-    if not current_user.admin:
-        return RedirectResponse(url="/auth/dashboard", status_code=302)
+async def mqtt_log_detail(filename: str, request: Request, current_user: User = Depends(ma_roli("admin"))):
     entries = mqtt_log.read_log_file(filename)
     if entries is None:
         return RedirectResponse(url="/auth/admin/mqtt-log", status_code=302)

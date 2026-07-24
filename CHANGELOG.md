@@ -4,6 +4,56 @@ Formát vychází z [Keep a Changelog](https://keepachangelog.com/cs/1.1.0/).
 
 ---
 
+## [2.8] — 2026-07-20
+
+### Přidáno
+- `PRIRUCKA_UZIVATELE.md` — uživatelská příručka rozdělená podle rolí (Uživatel / Administrátor), se screenshoty klíčových obrazovek v `docs/screenshots/`
+- Interaktivní webová verze příručky (přepínač role, permission matrix, náhledy obrazovek)
+
+---
+
+## [2.7] — 2026-07-17
+
+### Opraveno
+- `dej_zarizeni(id)` v `data_funkce.py` — SQL parametr `(id)` (jednoprvková závorka bez čárky, ne tuple) sjednocen na `(int(id),)`; doplněn chybějící `finally: conn.close()` (dřív se spojení při úspěchu nezavíralo)
+
+### Odstraněno (úklid technického dluhu)
+- `mqtt/routes.py` — nepoužívaný pozůstatek z dřívější Flask implementace (Flask ani není v `requirements.txt`)
+- `ensure_device_access_table()`, `ensure_train_types_table()`, `ensure_conditions_table()` v `data_funkce.py` — duplicitní vůči `init_db()`, nikde volané
+- `save_packet_to_db()` v `data_funkce.py` — nikdy volaná (zapisovala do fakticky nevyužívané tabulky `mqtt_packets`)
+- `_require_admin()` v `auth/devices.py` — definovaná, ale nikde použitá
+
+### Změněno
+- Databáze typů vlaků pro klasifikaci (15 lokomotiv) sjednocena do jediného zdroje pravdy — `nastaveni.TRAIN_TYPES_SEED`. Dřív existovala duplicitně jako `_TRAIN_DB_SEED` v `data_funkce.py` (skutečně používaný seed) a `_TRAIN_DB_FALLBACK` v `classifier.py` (záložní data pro degradovaný provoz) — riziko rozjetí při budoucí úpravě jednoho bez druhého
+- Sjednoceno vynucování administrátorské role: `/auth/train-types*` (5 endpointů) a `/auth/admin/*` (4 endpointy) nyní používají `Depends(ma_roli("admin"))` místo ručního `if not current_user.admin` v těle funkce
+- `ma_roli()` dependency (`decorators.py`) nyní při chybějící roli nastaví flash zprávu s vysvětlením, než vyhodí `NotAuthorizedException` — dřív u většiny takto chráněných endpointů uživatel jen tiše skončil jinde bez vysvětlení
+- Globální handler `NotAuthorizedException` (`app.py`) přesměrovává na `/auth/dashboard` místo `/auth/login` — přihlášený uživatel bez potřebné role tak není zmatený neočekávaným „odhlášením“
+
+Ověřeno automatizovaným smoke testem (`TestClient`): admin i běžný uživatel, přístup/zamítnutí na všech nově sjednocených endpointech, přítomnost flash zprávy, konzistence seedu databáze typů vlaků a shoda `classifier.py` fallbacku s `nastaveni.TRAIN_TYPES_SEED`.
+
+---
+
+## [2.6] — 2026-07-17
+
+### Zabezpečeno
+- `GET /add-user` se natrvalo uzamkne, jakmile v databázi existuje alespoň jeden uživatel (dřív bylo trvale a bez autentizace dostupné komukoli)
+- `GET/POST /auth/user/{id}` nyní vyžaduje roli `admin` (dřív stačilo pouhé přihlášení — libovolný uživatel mohl měnit jméno, heslo i role kohokoli jiného, včetně přiřazení role admin sám sobě)
+- `GET /auth/stats` nyní vyžaduje přihlášení (dřív veřejně dostupné bez autentizace)
+- MQTT přihlašovací údaje (`MQTT_HOST`, `MQTT_PORT`, `MQTT_USERNAME`, `MQTT_PASSWORD`) přesunuty z natvrdo zapsaných hodnot v `mqtt_receiver.py` do konfigurace přes proměnné prostředí (`nastaveni.py`), s fallbackem na původní hodnoty sdíleného kurzovního brokeru
+- Rate-limiting přihlášení: po 5 neúspěšných pokusech na stejné přihlašovací jméno se `POST /auth/login` na 60 s zamkne (in-memory, per proces)
+
+Ověřeno automatizovaným smoke testem (`fastapi.testclient.TestClient`) proti reálně nastartované aplikaci.
+
+---
+
+## [2.5] — 2026-07-17
+
+### Opraveno
+- `dej_zarizeni()` v `data_funkce.py`: chybný SQL parametr `(id)` (string místo tuple) způsoboval u dvouciferných a delších `device_id` pád na „Incorrect number of bindings supplied“, tichým odchycením výjimky vedl k prázdnému zobrazení stránek „Správa zařízení“ a „Data zařízení“ — opraveno na `(int(id),)`
+- `dej_zarizeni()`: chybějící `()` u `conn.close` (byl jen odkaz na metodu, spojení se nikdy nezavřelo) — přesunuto do `finally: conn.close()`
+
+---
+
 ## [2.4] — 2026-06-25
 
 ### Opraveno

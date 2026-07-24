@@ -8,7 +8,10 @@ from datetime import datetime
 import numpy as np
 import os
 from collections import deque
-from nastaveni import WAVE_SAMPLE_LEN, format_str, FORMAT_TELEMETRY_V1, FORMAT_TELEMETRY_V2, BUFFER_TIMEOUT_SECONDS
+from nastaveni import (
+    WAVE_SAMPLE_LEN, format_str, FORMAT_TELEMETRY_V1, FORMAT_TELEMETRY_V2,
+    BUFFER_TIMEOUT_SECONDS, DevelopmentConfig,
+)
 from time import sleep, monotonic
 from app_logger import get_logger
 from mqtt_log import log_event
@@ -294,7 +297,7 @@ def on_message(client, userdata, msg):
     
 def run_mqtt_receiver():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "FastAPI_MQTT_Receiver")
-    client.username_pw_set("iot-course-but", "thisisthemostsecretsecretever")
+    client.username_pw_set(DevelopmentConfig.MQTT_USERNAME, DevelopmentConfig.MQTT_PASSWORD)
     client.on_message = on_message
 
     def on_connect(c, u, f, rc):
@@ -307,5 +310,5 @@ def run_mqtt_receiver():
             print(f"[MQTT] Chyba připojení: {rc}")
 
     client.on_connect = on_connect
-    client.connect("iot-course-but.cloud.shiftr.io", 1883)
+    client.connect(DevelopmentConfig.MQTT_HOST, DevelopmentConfig.MQTT_PORT)
     client.loop_forever()
